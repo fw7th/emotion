@@ -3,114 +3,218 @@
 
 #include <cfloat>
 #include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 #include <thread>
 #include <utility>
 
 Emotion::Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
-                 const std::string &bin_path_, const std::string &param_path_,
-                 int num_threads_)
+                 const std::string &bin_path_, const std::string &param_path_)
     : input_queue(input_queue_), bin_path(bin_path_), param_path(param_path_)
 
 {
+  // Pre-allocate OpenCV processing buffers
+  gray_frame.create(FRAME_SIZE, FRAME_SIZE, CV_8UC1);
+  resized_frame.create(FRAME_SIZE, FRAME_SIZE, CV_8UC1);
+  processed_frame.create(FRAME_SIZE, FRAME_SIZE, CV_32FC1);
+  normalized_frame.create(FRAME_SIZE, FRAME_SIZE, CV_32FC1);
+
+  opt.num_threads = 4;
+  opt.use_vulkan_compute = true;
+  opt.use_fp16_arithmetic = true;
+  opt.use_fp16_storage = true;
+  emotion.opt = opt;
+  emotion.opt.use_fp16_arithmetic = true;
+  emotion.opt.use_fp16_storage = true;
+  emotion.opt.use_fp16_packed = true;
   emotion.load_param(param_path.data());
   emotion.load_model(bin_path.data());
+
+  std::cout << "Pre-allocated all buffers!" << std::endl;
 }
 
 Emotion::~Emotion() { emotion.clear(); }
 
-void Emotion::infer() {
-  cv::Mat crop;
+std::unordered_map<int, std::string> Emotion::emotions_ = {
+    {0, "Angry"},   {1, "Disgust"}, {2, "Fear"},    {3, "Happy"},
+    {4, "Neutral"}, {5, "Sad"},     {6, "Surprise"}};
+
+void Emotion::load() {
   int frame_count = 0;
-  auto start = std::chrono::steady_clock::now();
+  auto fps_timer_start = std::chrono::steady_clock::now();
 
   cv::namedWindow("frame", cv::WINDOW_NORMAL);
+  cv::resizeWindow("frame", 640, 480);
 
   while (true) {
+    auto loop_start = std::chrono::steady_clock::now();
+
+    // Check queue and get frame
     if (input_queue.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
-      /*
-      if (frame_count % 50 == 0) {
-         std::cout << "Detection queue is empty\n";
-      }
-      */
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      continue;
     }
-    /*
-    if (frame_count % 40 == 0)
-      std::cout << "Emotion now\n";
-    */
+
     auto opt_track_ptr = std::move(input_queue.pop());
 
     if (!opt_track_ptr.has_value()) {
-      std::cerr << "Error: opt_track_ptr is empty" << std::endl;
+      // std::cerr << "Error: opt_track_ptr is empty" << std::endl;
+
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
       continue;
     }
 
-    track_frame = opt_track_ptr.value()->frame;
+    cv::Mat &frame = opt_track_ptr.value()->frame;
 
-    /*
-    for (int i = 0; i < 1; i++) {
-      crop = x.crops[i];
-    }
-    */
+    infer(frame);
 
-    if (track_frame.empty()) {
+    if (frame.empty()) {
       // std::cout << "Emotion frame is empty.\n";
     }
 
-    /*
-    int height = frame.rows;
-    int height2 = crop.rows;
-
-    if (frame_count % 15 == 0)
-      std::cout << "Track crop frame: " << height2 << "\n";
-    */
-
-    cv::imshow("frame", track_frame);
+    cv::imshow("Emotion Detection", frame);
     cv::waitKey(1);
 
-    frame_count++;
-    auto end = std::chrono::steady_clock::now();
+    // Calculate total loop time
+    auto loop_end = std::chrono::steady_clock::now();
+    auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+        loop_end - loop_start);
 
-    std::chrono::duration<double> elasped_seconds = end - start;
-    auto duration_secs =
-        std::chrono::duration_cast<std::chrono::seconds>(elasped_seconds);
-
-    int secs = static_cast<int>(duration_secs.count());
-
-    if (secs >= 1) {
-      float fps = frame_count / 1.0;
-      // std::cout << "[DEBUG] Emotion Reader FPS = " << fps << "\n";
-
-      frame_count = 0;
-      start = end;
+    if (frame_count % 20 == 0) {
+      std::cout << "=== EMOTION " << frame_count << " TIMING ===\n";
+      /*
+      std::cout << "[TIMING] Frame Pointer Access:     " << std::fixed
+                << std::setprecision(2) << frame_access_time.count() * 1000
+                << " ms\n";
+      std::cout << "[TIMING] Emotion Detection: " << std::fixed
+                << std::setprecision(2) << detect_time.count() * 1000
+                << " ms\n";
+       */
+      std::cout << "[TIMING] Total Emotion Loop:     " << std::fixed
+                << std::setprecision(2) << loop_time.count() * 1000 << " ms\n";
+      std::cout << "================================\n";
     }
+
+    // FPS calculation
     frame_count++;
+    auto fps_timer_end = std::chrono::steady_clock::now();
+    auto elapsed_seconds =
+        std::chrono::duration_cast<std::chrono::duration<double>>(
+            fps_timer_end - fps_timer_start);
+
+    if (elapsed_seconds.count() >= 1.0) {
+      double fps = frame_count / elapsed_seconds.count();
+      std::cout << "[DEBUG] Emotion Detector FPS = " << std::fixed
+                << std::setprecision(1) << fps << "\n";
+      frame_count = 0;
+      fps_timer_start = fps_timer_end;
+    }
   }
   cv::destroyAllWindows();
 }
 
-int Emotion::predict(ncnn::Mat &img) {
+void Emotion::infer(cv::Mat &frame) {
+  static int loop_count = 0;
 
-  ncnn::Mat in;
-  ncnn::resize_bilinear(img, in, img_width, img_height);
-  ncnn::Mat ncnn_img = in;
+  auto final_start = std::chrono::steady_clock::now();
+  auto preprocess_start = std::chrono::steady_clock::now();
 
-  ncnn::Extractor ex = emotion.create_extractor();
-  ex.set_num_threads(num_threads);
-  ex.input("input", ncnn_img);
+  preprocess(frame);
 
-  ncnn::Mat out;
-  ex.extract("probs", out);
-  int max_index = max(out);
-  return max_index;
+  auto preprocess_end = std::chrono::steady_clock::now();
+  auto preprocess_time =
+      std::chrono::duration_cast<std::chrono::duration<double>>(
+          preprocess_end - preprocess_start);
+
+  auto predict_start = std::chrono::steady_clock::now();
+
+  int emotion_idx = predict(normalized_frame);
+
+  auto predict_end = std::chrono::steady_clock::now();
+  auto predict_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+      predict_end - predict_start);
+
+  std::string emotion_text = emotions_[emotion_idx];
+  std::cout << "Detected emotion: " << emotion_text << "\n";
+
+  cv::putText(frame, emotion_text, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN,
+              1.0, cv::Scalar(0, 0, 200), 3);
+
+  auto final_end = std::chrono::steady_clock::now();
+  auto final_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+      final_end - final_start);
+
+  if (loop_count % 20 == 0) {
+    std::cout << "=== INFER METHOD " << loop_count << " TIMING ===\n";
+    std::cout << "[TIMING] Preprocess Function Time:     " << std::fixed
+              << std::setprecision(2) << preprocess_time.count() * 1000
+              << " ms\n";
+
+    std::cout << "[TIMING] Prediction Function Time: " << std::fixed
+              << std::setprecision(2) << predict_time.count() * 1000 << " ms\n";
+
+    std::cout << "[TIMING] Full Prediction Time:     " << std::fixed
+              << std::setprecision(2) << final_time.count() * 1000 << " ms\n";
+
+    std::cout << "================================\n";
+  }
+  loop_count++;
 }
 
-int Emotion::max(ncnn::Mat &probs) {
+int Emotion::predict(cv::Mat &frame1) {
+  static int _predict_count = 0;
+
+  ncnn::Extractor extractor = emotion.create_extractor();
+
+  ncnn::Mat inmat(FRAME_SIZE, FRAME_SIZE, 1, frame1.ptr<float>());
+
+  extractor.set_light_mode(true);
+  extractor.input("in0", inmat);
+
+  auto extract_out_start = std::chrono::steady_clock::now();
+  ncnn::Mat out1;
+  extractor.extract("out0", out1);
+
+  auto extract_out_end = std::chrono::steady_clock::now();
+  auto extract_out_time =
+      std::chrono::duration_cast<std::chrono::duration<double>>(
+          extract_out_end - extract_out_start);
+
+  std::cout << "================================\n";
+  if (_predict_count % 20 == 0) {
+    std::cout << "[TIMING] Extraction Out Time:     " << std::fixed
+              << std::setprecision(2) << extract_out_time.count() * 1000
+              << " ms\n";
+
+    std::cout << "================================\n";
+  }
+
+  int emotion_idx = finalPred(out1);
+  _predict_count++;
+
+  return emotion_idx;
+}
+
+void Emotion::preprocess(const cv::Mat &frame) {
+  // Turn img to grayscale
+  cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
+
+  // Resize frame for input
+  cv::resize(gray_frame, resized_frame, cv::Size(FRAME_SIZE, FRAME_SIZE));
+
+  // Normalization
+  resized_frame.convertTo(processed_frame, CV_32F,
+                          1.0 / 255.0); // Scale to [0, 1]
+
+  // Normalize to [-1, 1] to match trained model
+  processed_frame.convertTo(normalized_frame, CV_32F, 2.0, -1.0);
+}
+
+int Emotion::maxIndex(ncnn::Mat &probs) {
   float max_val = -FLT_MAX;
-  int max_index = -1;
+  int max_index = 0;
 
   for (int i = 0; i < probs.w; ++i) {
     float val = probs[i];
@@ -120,4 +224,28 @@ int Emotion::max(ncnn::Mat &probs) {
     }
   }
   return max_index;
+}
+
+void Emotion::softmax(ncnn::Mat &nums) {
+  float max_val = -FLT_MAX;
+  for (int i = 0; i < nums.w; i++)
+    max_val = std::max(max_val, nums[i]);
+
+  float exp_sum = 0;
+  for (int i = 0; i < nums.w; i++)
+    exp_sum += std::exp(nums[i] - max_val);
+
+  for (int i = 0; i < nums.w; i++)
+    nums[i] = std::exp(nums[i] - max_val) / exp_sum;
+
+  for (int i = 0; i < nums.w; i++) {
+    nums[i] = std::exp(nums[i]) / exp_sum;
+  }
+}
+
+int Emotion::finalPred(ncnn::Mat &input) {
+  softmax(input);
+  int emotion_idx = maxIndex(input);
+
+  return emotion_idx;
 }

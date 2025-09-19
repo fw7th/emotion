@@ -10,13 +10,19 @@ import torch
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
-chosen = os.path.join(base_path, "models", "chosen.keras")
-onnx_h5 = os.path.join(base_path, "models", "chosen.onnx")
+chosen = os.path.join(base_path, "new.keras")
+onnx_h5 = os.path.join(base_path, "new.onnx")
 
 
 model = tf.keras.models.load_model(chosen)
 
-spec = tuple(tf.TensorSpec((None, *inp.shape[1:]), inp.dtype) for inp in model.inputs)
+# Wrap the Sequential model in a functional model
+inputs = tf.keras.Input(shape=(48, 48, 1), name="input")
+outputs = model(inputs)
+functional_model = tf.keras.Model(inputs=inputs, outputs=outputs)
+
+spec = (tf.TensorSpec((None, 48, 48, 1), tf.float32, name="input"),)
+
 mobile_onnx, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13)
 
 with open(onnx_h5, "wb") as f:
@@ -25,7 +31,7 @@ with open(onnx_h5, "wb") as f:
 
 """
     .pt -> onnx
-"""
+
 face_pt = os.path.join(base_path, "models", "face.pt")
 face_onnx = os.path.join(base_path, "models", "face.onnx")
 
@@ -46,3 +52,4 @@ torch.onnx.export(
     output_names=["output"],
     dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
 )
+"""

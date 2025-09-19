@@ -46,7 +46,7 @@ void Reader::read_frames() {
       break;
 
     cv::Mat new_cap;
-    cv::resize(capture, new_cap, cv::Size(320, 240));
+    cv::resize(capture, new_cap, cv::Size(640, 320));
 
     try {
       if (frame_count % 3 == 0) {

@@ -166,7 +166,8 @@ void UltraFace::infer() {
         loop_end - loop_start);
 
     // Print detailed timing every 10 frames
-    if (frame_count % 10 == 0) {
+    if (frame_count % 20 == 0) {
+      /*
       std::cout << "=== FRAME " << frame_count << " TIMING ===\n";
       std::cout << "[TIMING] Frame Copy:     " << std::fixed
                 << std::setprecision(2) << copy_time.count() * 1000 << " ms\n";
@@ -184,6 +185,7 @@ void UltraFace::infer() {
                   << (roi_time.count() * 1000) / face_info.size() << " ms\n";
       }
       std::cout << "================================\n";
+      */
     }
 
     // FPS calculation
@@ -207,23 +209,18 @@ cv::Mat UltraFace::roiCrop(float x1, float y1, float x2, float y2,
                            cv::Mat &frame) {
   float width = (x2 - x1) + 35;
   float height = (y2 - y1) + 35;
-  cv::Rect roi(x1 - 20, y1 - 20, width, height);
+
+  // FIX: Clamp to frame boundaries
+  int roi_x = std::max(0, (int)(x1 - 20));
+  int roi_y = std::max(0, (int)(y1 - 20));
+  int roi_w = std::min((int)width, frame.cols - roi_x);
+  int roi_h = std::min((int)height, frame.rows - roi_y);
+
+  cv::Rect roi(roi_x, roi_y, roi_w, roi_h);
   cv::Mat cropped = frame(roi);
 
-  /*
-  std::cout << "Cropped size: " << cropped.cols << "x" << cropped.rows
-            << std::endl;
-  std::cout << "Cropped empty? " << cropped.empty() << std::endl;
-  */
-
-  if (cropped.empty()) {
-
-    std::cout << "Cropped image is empty!" << std::endl;
-  }
   cv::Mat resize_cropped;
-  cv::Size newSize(48, 48);
-
-  cv::resize(cropped, resize_cropped, newSize, 0, 0, cv::INTER_LINEAR);
+  cv::resize(cropped, resize_cropped, cv::Size(48, 48));
   return resize_cropped;
 }
 
@@ -238,15 +235,14 @@ int UltraFace::detect(ncnn::Mat &img, std::vector<FaceInfo> &face_list) {
 
   ncnn::Mat in;
   ncnn::resize_bilinear(img, in, in_w, in_h);
-  ncnn::Mat ncnn_img = in;
-  ncnn_img.substract_mean_normalize(mean_vals, norm_vals);
+  in.substract_mean_normalize(mean_vals, norm_vals);
 
   std::vector<FaceInfo> bbox_collection;
   std::vector<FaceInfo> valid_input;
 
   ncnn::Extractor ex = ultraface.create_extractor();
   ex.set_num_threads(num_thread);
-  ex.input("input", ncnn_img);
+  ex.input("input", in);
 
   ncnn::Mat scores;
   ncnn::Mat boxes;

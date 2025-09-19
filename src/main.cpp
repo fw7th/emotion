@@ -16,8 +16,8 @@ int main() {
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
-  std::string bin_emo = "../../data/emotion/chosen.bin";
-  std::string param_emo = "../../data/emotion/chosen.param";
+  std::string bin_emo = "../../data/emotion_resnet/opt.bin";
+  std::string param_emo = "../../data/emotion_resnet/opt.param";
 
   std::cout << "Enter input source: ";
   std::cin >> input;
@@ -63,8 +63,8 @@ int main() {
   read::Reader reader(reader_queue);
   reader.setSource(source);
 
-  UltraFace ultraface(reader_queue, detect_queue, bin_ultra, param_ultra, 320,
-                      240, 1,
+  UltraFace ultraface(reader_queue, detect_queue, bin_ultra, param_ultra, 64,
+                      64, 1,
                       0.7); // config model input
 
   Tracker tracks(detect_queue, tracker_queue);
@@ -77,7 +77,9 @@ int main() {
   std::thread t4([&]() { ultraface.infer(); });
   std::thread t5([&]() { ultraface.infer(); });
   std::thread t6([&]() { tracks.track(); });
-  std::thread t7([&]() { emote.infer(); });
+  std::thread t7([&]() { emote.load(); });
+  std::thread t8([&]() { emote.load(); });
+  std::thread t9([&]() { emote.load(); });
 
   t1.join();
   t2.join();
@@ -86,6 +88,8 @@ int main() {
   t5.join();
   t6.join();
   t7.join();
+  t8.join();
+  t9.join();
 
   return 0;
 }

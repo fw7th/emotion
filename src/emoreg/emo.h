@@ -3,7 +3,8 @@
 #include "customqueue.h"
 #include "net.h"
 #include "structs.h"
-#include <opencv2/core.hpp>
+#include <opencv2/core/mat.hpp>
+#include <unordered_map>
 
 #include <algorithm>
 #include <memory>
@@ -12,24 +13,29 @@
 
 class Emotion {
 private:
+  static constexpr int FRAME_SIZE = 112;
+  static constexpr int NUM_EMOTIONS = 7;
+  static std::unordered_map<int, std::string> emotions_;
+
   ncnn::Net emotion;
+  ncnn::Option opt;
 
-  cv::Mat track_frame;
-  int image_w;
-  int image_h;
+  cv::Mat gray_frame;
+  cv::Mat resized_frame;
+  cv::Mat processed_frame;
+  cv::Mat normalized_frame;
 
-  int num_threads;
-  int img_width = 80;
-  int img_height = 80;
+  int maxIndex(ncnn::Mat &probs);
+  int predict(cv::Mat &frame1);
+  int finalPred(ncnn::Mat &input1);
 
-  int predict(ncnn::Mat &img);
-
-  int max(ncnn::Mat &probs);
+  void preprocess(const cv::Mat &frame);
+  void softmax(ncnn::Mat &nums);
+  void infer(cv::Mat &infer);
 
 public:
   Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
-          const std::string &bin_path_, const std::string &param_path_,
-          int num_threads_ = 4);
+          const std::string &bin_path_, const std::string &param_path_);
 
   Emotion(const Emotion &) = delete;            // Delete copy constructor
   Emotion &operator=(const Emotion &) = delete; // Delete copy assignment
@@ -40,5 +46,5 @@ public:
   const std::string &bin_path;
   const std::string &param_path;
 
-  void infer();
+  void load();
 };
