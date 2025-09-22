@@ -75,7 +75,7 @@ UltraFace::UltraFace(ts::TSQueue<cv::Mat> &input_queue_,
 
 UltraFace::~UltraFace() { ultraface.clear(); }
 
-void UltraFace::infer() {
+void UltraFace::infer() { // ~8ms inference max.
   int frame_count = 0;
   auto fps_timer_start = std::chrono::steady_clock::now();
 
@@ -166,9 +166,8 @@ void UltraFace::infer() {
         loop_end - loop_start);
 
     // Print detailed timing every 10 frames
-    if (frame_count % 20 == 0) {
-      /*
-      std::cout << "=== FRAME " << frame_count << " TIMING ===\n";
+    if (frame_count % 30 == 0) {
+      std::cout << "+++ Face Detector INFER func +++\n";
       std::cout << "[TIMING] Frame Copy:     " << std::fixed
                 << std::setprecision(2) << copy_time.count() * 1000 << " ms\n";
       std::cout << "[TIMING] Face Detection: " << std::fixed
@@ -185,7 +184,6 @@ void UltraFace::infer() {
                   << (roi_time.count() * 1000) / face_info.size() << " ms\n";
       }
       std::cout << "================================\n";
-      */
     }
 
     // FPS calculation
@@ -197,10 +195,13 @@ void UltraFace::infer() {
 
     if (elapsed_seconds.count() >= 1.0) {
       double fps = frame_count / elapsed_seconds.count();
+
+    /*
       std::cout << "[DEBUG] Face Detector FPS = " << std::fixed
                 << std::setprecision(1) << fps << "\n";
       frame_count = 0;
       fps_timer_start = fps_timer_end;
+    */
     }
   }
 }

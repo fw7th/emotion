@@ -1,0 +1,9 @@
+In emo.cpp;
+1. find ways to decrease model inference time, add brighntess adjustments to frames to aid inference.
+2. Use int8 on model.
+
+If still trash;
+Train w/ shuffleNet
+
+if still;
+Use custom CNN

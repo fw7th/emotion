@@ -7,9 +7,7 @@ import time
 
 def createModel():
     """Create model optimized for grayscale emotion recognition"""
-    model = models.mobilenet_v3_small(
-        weights=models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
-    )
+    model = models.mobilenet_v3_small(weights=None)
 
     # Modify first conv layer for single-channel grayscale input
     model.features[0][0] = nn.Conv2d(
@@ -19,7 +17,6 @@ def createModel():
     for param in model.parameters():
         param.requires_grad = False
 
-    # Improved classifier with batch normalization
     model.classifier[3] = nn.Linear(in_features=1024, out_features=7, bias=True)
 
     return model
@@ -74,11 +71,11 @@ def FER_image(img_path):
     print(f"Prediction: {emotion_dict[pred]}\n")
     print(f"Time taken for inference: {inference_time:.4f} seconds")
 
-    dummy_input = torch.randn(1, 1, 96, 96)  # depends on training resolution
+    dummy_input = torch.randn(1, 1, 96, 96)
     traced_model = torch.jit.trace(model, dummy_input)
 
     # Save TorchScript model
-    ##traced_model.save("/home/fw7th/emotions/data/emotion_resnet/emotion.pt")
+    traced_model.save("/home/fw7th/emotions/data/mobilenet.pt")
 
 
-FER_image("/home/fw7th/Pictures/man.jpeg")
+FER_image("/home/fw7th/Pictures/me.jpg")

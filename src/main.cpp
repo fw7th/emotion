@@ -16,8 +16,8 @@ int main() {
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
-  std::string bin_emo = "../../data/emotion_resnet/opt.bin";
-  std::string param_emo = "../../data/emotion_resnet/opt.param";
+  std::string bin_emo = "../../data/detector/opt.bin";
+  std::string param_emo = "../../data/detector/opt.param";
 
   std::cout << "Enter input source: ";
   std::cin >> input;
@@ -73,22 +73,12 @@ int main() {
 
   std::thread t1([&]() { reader.read_frames(); });
   std::thread t2([&]() { ultraface.infer(); });
-  std::thread t3([&]() { ultraface.infer(); });
-  std::thread t4([&]() { ultraface.infer(); });
-  std::thread t5([&]() { ultraface.infer(); });
   std::thread t6([&]() { tracks.track(); });
-  std::thread t7([&]() { emote.load(); });
-  std::thread t8([&]() { emote.load(); });
   std::thread t9([&]() { emote.load(); });
 
   t1.join();
   t2.join();
-  t3.join();
-  t4.join();
-  t5.join();
   t6.join();
-  t7.join();
-  t8.join();
   t9.join();
 
   return 0;

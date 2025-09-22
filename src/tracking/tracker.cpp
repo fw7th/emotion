@@ -85,12 +85,5 @@ void Tracker::track() {
         std::chrono::duration_cast<std::chrono::duration<double>>(
             fps_timer_end - fps_timer_start);
 
-    if (elapsed_seconds.count() >= 1.0) {
-      double fps = frame_count / elapsed_seconds.count();
-      std::cout << "[DEBUG] Tracker FPS = " << std::fixed
-                << std::setprecision(1) << fps << "\n";
-      frame_count = 0;
-      fps_timer_start = fps_timer_end;
-    }
   }
 }
