@@ -7,7 +7,7 @@ target_include_directories(
     ${CMAKE_SOURCE_DIR}/3rdparty/ncnn/src 
     ${CMAKE_BINARY_DIR}/ncnn_build/src 
     ${OpenCV_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/utils
 )
 
 target_link_libraries(Emote PRIVATE ncnn ${OpenCV_LIBS})

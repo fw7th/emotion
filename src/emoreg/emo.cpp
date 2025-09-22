@@ -86,7 +86,8 @@ void Emotion::load() {
 
     if (frame_count % 30 == 0) {
       /*
-      std::cout << "=== EMOTION " << frame_count << " TIMING ===\n";
+      std::cout << "================================\n";
+      std::cout << "+++ EMOTION DETECTION +++\n";
       std::cout << "[TIMING] Frame Pointer Access:     " << std::fixed
                 << std::setprecision(2) << frame_access_time.count() * 1000
                 << " ms\n";
@@ -109,7 +110,7 @@ void Emotion::load() {
     if (elapsed_seconds.count() >= 1.0) {
       double fps = frame_count / elapsed_seconds.count();
       /*
-      std::cout << "[DEBUG] Emotion Detector FPS = " << std::fixed
+      std::cout << "[TIMING] Emotion Detector FPS = " << std::fixed
                 << std::setprecision(1) << fps << "\n";
       */
       frame_count = 0;
@@ -145,16 +146,12 @@ void Emotion::infer(cv::Mat &frame) {
 
   if (loop_count % 30 == 0) {
     /*
-    std::cout << "+++ INFER METHOD +++\n";
-    std::cout << "[INFERENCE] Detected emotion: " << emotion_text << ".\n";
-
+    std::cout << "+++ Infer Method +++\n";
     std::cout << "[TIMING] Prediction Function Time: " << std::fixed
               << std::setprecision(2) << predict_time.count() * 1000 << " ms\n";
 
     std::cout << "[TIMING] Full Prediction Time:     " << std::fixed
               << std::setprecision(2) << final_time.count() * 1000 << " ms\n";
-
-    std::cout << "================================\n";
     */
   }
   loop_count++;
@@ -187,7 +184,7 @@ int Emotion::predict(cv::Mat &frame1) {
 
   if (_predict_count % 30 == 0) {
     /*
-    std::cout << "+++ PREDICT METHOD +++\n";
+    std::cout << "+++ Predict Method +++\n";
     std::cout << "[TIMING] Extraction Out Time: " << std::fixed
               << std::setprecision(2) << extract_out_time.count() * 1000
               << " ms\n";

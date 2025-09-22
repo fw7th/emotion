@@ -177,14 +177,31 @@ void UltraFace::infer() {  // ~9ms inference max.
     auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
         loop_end - loop_start);
 
+    // FPS calculation
+    frame_count++;
+    auto fps_timer_end = std::chrono::steady_clock::now();
+    auto elapsed_seconds =
+        std::chrono::duration_cast<std::chrono::duration<double>>(
+            fps_timer_end - fps_timer_start);
+
+    double fps;
+    if (elapsed_seconds.count() >= 1.0) {
+      fps = frame_count / elapsed_seconds.count();
+    }
+
     // Print detailed timing every 10 frames
     if (frame_count % 30 == 0) {
+      std::cout << "================================\n";
       std::cout << "+++ Face Detector INFER func +++\n";
       std::cout << "[TIMING] Frame Copy:     " << std::fixed
                 << std::setprecision(2) << copy_time.count() * 1000 << " ms\n";
       std::cout << "[TIMING] Face Detection: " << std::fixed
                 << std::setprecision(2) << detect_time.count() * 1000
                 << " ms\n";
+
+      std::cout << "[TIMING] Face Detector FPS = " << std::fixed
+                << std::setprecision(1) << fps << "\n";
+      frame_count = 0;
       std::cout << "[TIMING] ROI Processing: " << std::fixed
                 << std::setprecision(2) << roi_time.count() * 1000 << " ms\n";
       std::cout << "[TIMING] Total Loop:     " << std::fixed
@@ -198,23 +215,8 @@ void UltraFace::infer() {  // ~9ms inference max.
       std::cout << "================================\n";
     }
 
-    // FPS calculation
-    frame_count++;
-    auto fps_timer_end = std::chrono::steady_clock::now();
-    auto elapsed_seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(
-            fps_timer_end - fps_timer_start);
-
-    if (elapsed_seconds.count() >= 1.0) {
-      double fps = frame_count / elapsed_seconds.count();
-
-      /*
-        std::cout << "[DEBUG] Face Detector FPS = " << std::fixed
-                  << std::setprecision(1) << fps << "\n";
-        frame_count = 0;
-        fps_timer_start = fps_timer_end;
-      */
-    }
+    frame_count = 0;
+    fps_timer_start = fps_timer_end;
   }
 }
 
