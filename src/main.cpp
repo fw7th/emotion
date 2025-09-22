@@ -64,8 +64,7 @@ int main() {
   reader.setSource(source);
 
   UltraFace ultraface(reader_queue, detect_queue, bin_ultra, param_ultra, 64,
-                      64, 1,
-                      0.7); // config model input
+                      64, 0.7);  // config model input
 
   Tracker tracks(detect_queue, tracker_queue);
 

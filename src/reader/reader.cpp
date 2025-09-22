@@ -1,4 +1,5 @@
 #include "reader.h"
+
 #include <chrono>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
@@ -15,7 +16,8 @@ void Reader::setSource(std::variant<int, std::string> s) {
   source = std::move(s);
 }
 
-// Reads frames from video source, downscales for processing, and queues every 3rd frame
+// Reads frames from video source, downscales for processing, and queues every
+// 3rd frame
 void Reader::read_frames() {
   // Validate source is configured
   if (std::holds_alternative<std::string>(source) &&
@@ -25,13 +27,22 @@ void Reader::read_frames() {
   }
 
   cv::VideoCapture cap;
+
   // Open source (handles both camera index and file path via variant)
   std::visit([&cap](auto &&value) { cap.open(value); }, source);
-  
+
   if (!cap.isOpened()) {
     std::cerr << "Source could not be read. \n";
     return;
   }
+
+  // Lock camera settings to prevent auto-adjustments
+  cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);  // Manual exposure
+  cap.set(cv::CAP_PROP_EXPOSURE, -6);         // Fixed exposure value
+  cap.set(cv::CAP_PROP_GAIN, 0);              // Fixed gain
+
+  // Force consistent frame timing
+  cap.set(cv::CAP_PROP_BUFFERSIZE, 1);  // Reduce buffering
 
   // FPS calculation variables
   int frame_count = 0;
@@ -39,11 +50,10 @@ void Reader::read_frames() {
 
   while (cap.isOpened()) {
     auto time1 = std::chrono::steady_clock::now();
-    
+
     cv::Mat capture;
     cap >> capture;
-    if (capture.empty())
-      break;
+    if (capture.empty()) break;
 
     // Downscale for faster processing (640x320 vs original resolution)
     cv::Mat new_cap;
@@ -54,7 +64,7 @@ void Reader::read_frames() {
       if (frame_count % 3 == 0) {
         output_queue.push(std::move(new_cap));
       }
-      
+
       /*
       if (frame_count % 50 == 0) {
         std::cout << "Frame passed to queue " << new_cap.size << "\n";
@@ -73,7 +83,7 @@ void Reader::read_frames() {
     auto duration_secs =
         std::chrono::duration_cast<std::chrono::seconds>(elasped_seconds);
     int secs = static_cast<int>(duration_secs.count());
-    
+
     if (secs >= 1) {
       float fps = frame_count / 1.0;
       // std::cout << "[DEBUG] Frame Reader FPS = " << fps << "\n";
@@ -91,8 +101,8 @@ void Reader::read_frames() {
     }
     */
   }
-  
+
   cap.release();
 }
 
-} // namespace read
+}  // namespace read

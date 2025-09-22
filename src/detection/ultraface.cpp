@@ -9,8 +9,7 @@
 #define clip(x, y) (x < 0 ? 0 : (x > y ? y : x))
 
 #include "ultraface.h"
-#include "funcs.h"
-#include "mat.h"
+
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -18,23 +17,29 @@
 #include <thread>
 #include <utility>
 
+#include "funcs.h"
+#include "mat.h"
+
 UltraFace::UltraFace(ts::TSQueue<cv::Mat> &input_queue_,
                      ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
                      const std::string &bin_path_,
                      const std::string &param_path_, int input_width,
-                     int input_length, int num_thread_, float score_threshold_,
+                     int input_length, float score_threshold_,
                      float iou_threshold_, int topk_)
-    : input_queue(input_queue_), output_queue(output_queue_),
-      bin_path(bin_path_), param_path(param_path_)
+    : input_queue(input_queue_),
+      output_queue(output_queue_),
+      bin_path(bin_path_),
+      param_path(param_path_)
 
 {
-  num_thread = num_thread_;
   topk = topk_;
   score_threshold = score_threshold_;
   iou_threshold = iou_threshold_;
   in_w = input_width;
   in_h = input_length;
   w_h_list = {in_w, in_h};
+
+  num_cores = std::thread::hardware_concurrency();
 
   for (auto size : w_h_list) {
     std::vector<float> fm_item;
@@ -71,17 +76,24 @@ UltraFace::UltraFace(ts::TSQueue<cv::Mat> &input_queue_,
 
   ultraface.load_param(param_path.data());
   ultraface.load_model(bin_path.data());
+
+  ultraface.opt.use_vulkan_compute = false;  // CPU inference
+  ultraface.opt.use_fp16_arithmetic = true;
+  ultraface.opt.use_int8_arithmetic = false;
+  ultraface.opt.use_packing_layout = true;
+  ultraface.opt.use_sgemm_convolution = true;
+  ultraface.opt.use_winograd_convolution = true;
 }
 
 UltraFace::~UltraFace() { ultraface.clear(); }
 
-void UltraFace::infer() { // ~8ms inference max.
+void UltraFace::infer() {  // ~9ms inference max.
   int frame_count = 0;
   auto fps_timer_start = std::chrono::steady_clock::now();
 
   // Pre-allocate reusable containers
   std::vector<FaceInfo> face_info;
-  face_info.reserve(10); // Reserve space for typical number of faces
+  face_info.reserve(10);  // Reserve space for typical number of faces
 
   while (true) {
     auto loop_start = std::chrono::steady_clock::now();
@@ -142,12 +154,12 @@ void UltraFace::infer() { // ~8ms inference max.
     // Time ROI processing (all faces together)
     auto roi_start = std::chrono::steady_clock::now();
     for (const auto &face :
-         face_info) { // Use const reference, range-based loop
+         face_info) {  // Use const reference, range-based loop
       cv::Point pt1(static_cast<int>(face.x1), static_cast<int>(face.y1));
       cv::Point pt2(static_cast<int>(face.x2), static_cast<int>(face.y2));
 
       cv::Mat crop = roiCrop(face.x1, face.y1, face.x2, face.y2, frame_copy);
-      obj_ptr->crops.emplace_back(std::move(crop)); // Move crop to avoid copy
+      obj_ptr->crops.emplace_back(std::move(crop));  // Move crop to avoid copy
       cv::rectangle(frame, pt1, pt2, cv::Scalar(0, 255, 0), 1);
     }
     auto roi_end = std::chrono::steady_clock::now();
@@ -196,12 +208,12 @@ void UltraFace::infer() { // ~8ms inference max.
     if (elapsed_seconds.count() >= 1.0) {
       double fps = frame_count / elapsed_seconds.count();
 
-    /*
-      std::cout << "[DEBUG] Face Detector FPS = " << std::fixed
-                << std::setprecision(1) << fps << "\n";
-      frame_count = 0;
-      fps_timer_start = fps_timer_end;
-    */
+      /*
+        std::cout << "[DEBUG] Face Detector FPS = " << std::fixed
+                  << std::setprecision(1) << fps << "\n";
+        frame_count = 0;
+        fps_timer_start = fps_timer_end;
+      */
     }
   }
 }
@@ -242,7 +254,7 @@ int UltraFace::detect(ncnn::Mat &img, std::vector<FaceInfo> &face_list) {
   std::vector<FaceInfo> valid_input;
 
   ncnn::Extractor ex = ultraface.create_extractor();
-  ex.set_num_threads(num_thread);
+  ex.set_num_threads(num_cores - 1);
   ex.input("input", in);
 
   ncnn::Mat scores;
@@ -290,8 +302,7 @@ void UltraFace::nms(std::vector<FaceInfo> &input, std::vector<FaceInfo> &output,
   std::vector<int> merged(box_num, 0);
 
   for (int i = 0; i < box_num; i++) {
-    if (merged[i])
-      continue;
+    if (merged[i]) continue;
     std::vector<FaceInfo> buf;
 
     buf.push_back(input[i]);
@@ -303,8 +314,7 @@ void UltraFace::nms(std::vector<FaceInfo> &input, std::vector<FaceInfo> &output,
     float area0 = h0 * w0;
 
     for (int j = i + 1; j < box_num; j++) {
-      if (merged[j])
-        continue;
+      if (merged[j]) continue;
 
       float inner_x0 = input[i].x1 > input[j].x1 ? input[i].x1 : input[j].x1;
       float inner_y0 = input[i].y1 > input[j].y1 ? input[i].y1 : input[j].y1;
@@ -315,8 +325,7 @@ void UltraFace::nms(std::vector<FaceInfo> &input, std::vector<FaceInfo> &output,
       float inner_h = inner_y1 - inner_y0 + 1;
       float inner_w = inner_x1 - inner_x0 + 1;
 
-      if (inner_h <= 0 || inner_w <= 0)
-        continue;
+      if (inner_h <= 0 || inner_w <= 0) continue;
 
       float inner_area = inner_h * inner_w;
 
@@ -335,32 +344,32 @@ void UltraFace::nms(std::vector<FaceInfo> &input, std::vector<FaceInfo> &output,
       }
     }
     switch (type) {
-    case hard_nms: {
-      output.push_back(buf[0]);
-      break;
-    }
-    case blending_nms: {
-      float total = 0;
-      for (int i = 0; i < buf.size(); i++) {
-        total += exp(buf[i].score);
+      case hard_nms: {
+        output.push_back(buf[0]);
+        break;
       }
-      FaceInfo rects;
-      memset(&rects, 0, sizeof(rects));
-      for (int i = 0; i < buf.size(); i++) {
-        float rate = exp(buf[i].score) / total;
-        rects.x1 += buf[i].x1 * rate;
-        rects.y1 += buf[i].y1 * rate;
-        rects.x2 += buf[i].x2 * rate;
-        rects.y2 += buf[i].y2 * rate;
-        rects.score += buf[i].score * rate;
+      case blending_nms: {
+        float total = 0;
+        for (int i = 0; i < buf.size(); i++) {
+          total += exp(buf[i].score);
+        }
+        FaceInfo rects;
+        memset(&rects, 0, sizeof(rects));
+        for (int i = 0; i < buf.size(); i++) {
+          float rate = exp(buf[i].score) / total;
+          rects.x1 += buf[i].x1 * rate;
+          rects.y1 += buf[i].y1 * rate;
+          rects.x2 += buf[i].x2 * rate;
+          rects.y2 += buf[i].y2 * rate;
+          rects.score += buf[i].score * rate;
+        }
+        output.push_back(rects);
+        break;
       }
-      output.push_back(rects);
-      break;
-    }
-    default: {
-      printf("wrong type of nms.");
-      exit(-1);
-    }
+      default: {
+        printf("wrong type of nms.");
+        exit(-1);
+      }
     }
   }
 }

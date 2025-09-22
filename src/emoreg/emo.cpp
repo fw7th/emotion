@@ -18,21 +18,23 @@ Emotion::Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
       param_path(param_path_)
 
 {
+  num_cores = std::thread::hardware_concurrency();
+
   std::cout << "Pre-allocated all buffers!" << std::endl;
+
   // Pre-allocate OpenCV processing buffers
   gray_frame.create(FRAME_SIZE, FRAME_SIZE, CV_8UC1);
   bright_frame.create(FRAME_SIZE, FRAME_SIZE, CV_8UC1);
 
-  emotion.opt.use_vulkan_compute = false;  // CPU inference
-  emotion.opt.num_threads = 4;
-  emotion.opt.use_fp16_packed = true;
-  emotion.opt.use_fp16_storage = true;
-  emotion.opt.use_fp16_arithmetic = false;
-  emotion.opt.use_int8_storage = true;
-  emotion.opt.use_int8_arithmetic = false;
-
   emotion.load_param(param_path.data());
   emotion.load_model(bin_path.data());
+
+  emotion.opt.use_vulkan_compute = false;  // CPU inference
+  emotion.opt.use_fp16_arithmetic = true;
+  emotion.opt.use_int8_arithmetic = false;
+  emotion.opt.use_packing_layout = true;
+  emotion.opt.use_sgemm_convolution = true;
+  emotion.opt.use_winograd_convolution = true;
 }
 
 Emotion::~Emotion() { emotion.clear(); }
@@ -171,6 +173,7 @@ int Emotion::predict(cv::Mat &frame1) {
 
   ncnn::Extractor extractor = emotion.create_extractor();
   extractor.set_light_mode(true);
+  extractor.set_num_threads(num_cores - 1);
   extractor.input("in0", inmat);
 
   auto extract_out_start = std::chrono::steady_clock::now();

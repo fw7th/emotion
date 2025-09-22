@@ -22,9 +22,7 @@ class Emotion {
 
   cv::Mat bright_frame;
   cv::Mat gray_frame;
-  cv::Mat resized_frame;
-  cv::Mat processed_frame;
-  cv::Mat normalized_frame;
+  int num_cores;
 
   int maxIndex(ncnn::Mat &probs);
   int predict(cv::Mat &frame1);
@@ -43,5 +41,4 @@ class Emotion {
   const std::string &param_path;
   ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue;
   void load();
-
 };

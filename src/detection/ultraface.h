@@ -11,21 +11,21 @@
 
 #pragma once
 
-#include "customqueue.h"
-#include "gpu.h"
-#include "net.h"
-#include "structs.h"
-
 #include <algorithm>
 #include <memory>
 #include <opencv2/core.hpp>
 #include <string>
 #include <vector>
 
+#include "customqueue.h"
+#include "gpu.h"
+#include "net.h"
+#include "structs.h"
+
 #define num_featuremap 4
 #define hard_nms 1
-#define blending_nms                                                           \
-  2 /* mix nms was been proposaled in paper blaze face, aims to minimize the   \
+#define blending_nms                                                         \
+  2 /* mix nms was been proposaled in paper blaze face, aims to minimize the \
        temporal jitter*/
 
 typedef struct FaceInfo {
@@ -39,29 +39,28 @@ typedef struct FaceInfo {
 } FaceInfo;
 
 class UltraFace {
-public:
+ public:
   UltraFace(ts::TSQueue<cv::Mat> &input_queue_,
             ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
             const std::string &bin_path, const std::string &param_path,
-            int input_width, int input_length, int num_thread_ = 4,
-            float score_threshold_ = 0.7, float iou_threshold_ = 0.3,
-            int topk_ = -1);
+            int input_width, int input_length, float score_threshold_ = 0.7,
+            float iou_threshold_ = 0.3, int topk_ = -1);
 
-  UltraFace(const UltraFace &) = delete;            // Delete copy constructor
-  UltraFace &operator=(const UltraFace &) = delete; // Delete copy assignment
+  UltraFace(const UltraFace &) = delete;             // Delete copy constructor
+  UltraFace &operator=(const UltraFace &) = delete;  // Delete copy assignment
   ~UltraFace();
 
   const std::string &bin_path;
   const std::string &param_path;
 
-  ts::TSQueue<cv::Mat> &input_queue; // queue to recieve detections
+  ts::TSQueue<cv::Mat> &input_queue;  // queue to recieve detections
   ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue;
 
   cv::Mat roiCrop(float x1, float y1, float x2, float y2, cv::Mat &frame);
 
   void infer();
 
-private:
+ private:
   int detect(ncnn::Mat &img, std::vector<FaceInfo> &face_list);
 
   void generateBBox(std::vector<FaceInfo> &bbox_collection, ncnn::Mat scores,
@@ -70,8 +69,9 @@ private:
   void nms(std::vector<FaceInfo> &input, std::vector<FaceInfo> &output,
            int type = blending_nms);
 
-private:
+ private:
   ncnn::Net ultraface;
+  ncnn::Option opt;
 
   int num_thread;
   int image_w;
@@ -80,6 +80,7 @@ private:
   int in_w;
   int in_h;
   int num_anchors;
+  int num_cores;
 
   int topk;
   float score_threshold;
