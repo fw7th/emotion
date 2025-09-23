@@ -58,7 +58,6 @@ int main() {
 
   ts::TSQueue<cv::Mat> reader_queue;
   ts::TSQueue<std::unique_ptr<UltraStruct>> detect_queue;
-  ts::TSQueue<std::unique_ptr<UltraStruct>> tracker_queue;
 
   read::Reader reader(reader_queue);
   reader.setSource(source);
@@ -66,18 +65,14 @@ int main() {
   UltraFace ultraface(reader_queue, detect_queue, bin_ultra, param_ultra, 64,
                       64, 0.7);  // config model input
 
-  Tracker tracks(detect_queue, tracker_queue);
-
-  Emotion emote(tracker_queue, bin_emo, param_emo);
+  Emotion emote(detect_queue, bin_emo, param_emo);
 
   std::thread t1([&]() { reader.read_frames(); });
   std::thread t2([&]() { ultraface.infer(); });
-  std::thread t6([&]() { tracks.track(); });
   std::thread t9([&]() { emote.load(); });
 
   t1.join();
   t2.join();
-  t6.join();
   t9.join();
 
   return 0;

@@ -60,16 +60,16 @@ void Emotion::load() {
       continue;
     }
 
-    auto opt_track_ptr = std::move(input_queue.pop());
+    auto opt_ultra_ptr = std::move(input_queue.pop());
 
-    if (!opt_track_ptr.has_value()) {
-      // std::cerr << "Error: opt_track_ptr is empty" << std::endl;
+    if (!opt_ultra_ptr.has_value()) {
+      // std::cerr << "Error: opt_ultra_ptr is empty" << std::endl;
 
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
       continue;
     }
 
-    cv::Mat &frame = opt_track_ptr.value()->frame;
+    cv::Mat &frame = opt_ultra_ptr.value()->frame;
 
     infer(frame);
 
