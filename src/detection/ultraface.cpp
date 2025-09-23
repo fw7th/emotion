@@ -89,7 +89,7 @@ UltraFace::~UltraFace() { ultraface.clear(); }
 
 void UltraFace::infer() {  // ~9ms inference max.
   int frame_count = 0;
-  auto fps_timer_start = std::chrono::steady_clock::now();
+  float frame_time = 0;  // time taken to process frames
 
   // Pre-allocate reusable containers
   std::vector<FaceInfo> face_info;
@@ -152,24 +152,17 @@ void UltraFace::infer() {  // ~9ms inference max.
     obj_ptr->crops.reserve(face_info.size());
 
     // Time ROI processing (all faces together)
-    auto roi_start = std::chrono::steady_clock::now();
     for (const auto &face :
          face_info) {  // Use const reference, range-based loop
       cv::Point pt1(static_cast<int>(face.x1), static_cast<int>(face.y1));
       cv::Point pt2(static_cast<int>(face.x2), static_cast<int>(face.y2));
 
       cv::Mat crop = roiCrop(face.x1, face.y1, face.x2, face.y2, frame_copy);
-      obj_ptr->crops.emplace_back(std::move(crop));  // Move crop to avoid copy
+      obj_ptr->crops.emplace_back(std::move(crop));
       cv::rectangle(frame, pt1, pt2, cv::Scalar(0, 255, 0), 1);
     }
-    auto roi_end = std::chrono::steady_clock::now();
-    auto roi_time = std::chrono::duration_cast<std::chrono::duration<double>>(
-        roi_end - roi_start);
 
-    // Move frame to output object
     obj_ptr->frame = std::move(frame);
-
-    // Push to output queue
     output_queue.push(std::move(obj_ptr));
 
     // Calculate total loop time
@@ -178,45 +171,31 @@ void UltraFace::infer() {  // ~9ms inference max.
         loop_end - loop_start);
 
     // FPS calculation
+    frame_time += loop_time.count() * 1000;
     frame_count++;
-    auto fps_timer_end = std::chrono::steady_clock::now();
-    auto elapsed_seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(
-            fps_timer_end - fps_timer_start);
 
-    double fps;
-    if (elapsed_seconds.count() >= 1.0) {
-      fps = frame_count / elapsed_seconds.count();
-    }
-
-    // Print detailed timing every 10 frames
+    // Print detailed timing every 30 frames
     if (frame_count % 30 == 0) {
       std::cout << "================================\n";
-      std::cout << "+++ Face Detector INFER func +++\n";
-      std::cout << "[TIMING] Frame Copy:     " << std::fixed
-                << std::setprecision(2) << copy_time.count() * 1000 << " ms\n";
+      std::cout << "+++ FACE DETECTOR +++\n";
+      std::cout << "[TIMING] Frame Copy: " << std::fixed << std::setprecision(2)
+                << copy_time.count() * 1000 << " ms\n";
       std::cout << "[TIMING] Face Detection: " << std::fixed
                 << std::setprecision(2) << detect_time.count() * 1000
                 << " ms\n";
 
-      std::cout << "[TIMING] Face Detector FPS = " << std::fixed
-                << std::setprecision(1) << fps << "\n";
-      frame_count = 0;
-      std::cout << "[TIMING] ROI Processing: " << std::fixed
-                << std::setprecision(2) << roi_time.count() * 1000 << " ms\n";
-      std::cout << "[TIMING] Total Loop:     " << std::fixed
-                << std::setprecision(2) << loop_time.count() * 1000 << " ms\n";
+      float avg_processing_time = frame_time / 30;
+      float fps = 1 / (avg_processing_time / 1000);
+      std::cout << "[TIMING] Average Frame Processing: " << std::fixed
+                << std::setprecision(2) << avg_processing_time << " ms\n";
+      std::cout << "[TIMING] FPS: " << std::fixed << std::setprecision(2) << fps
+                << " fps\n";
       std::cout << "[TIMING] Faces Detected: " << face_info.size() << "\n";
-      if (!face_info.empty()) {
-        std::cout << "[TIMING] Avg ROI/Face:   " << std::fixed
-                  << std::setprecision(2)
-                  << (roi_time.count() * 1000) / face_info.size() << " ms\n";
-      }
-      std::cout << "================================\n";
-    }
 
-    frame_count = 0;
-    fps_timer_start = fps_timer_end;
+      std::cout << "================================\n";
+      frame_time = 0;
+      frame_count = 0;
+    }
   }
 }
 

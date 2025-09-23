@@ -1,6 +1,7 @@
 #include "reader.h"
 
 #include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -37,53 +38,54 @@ void Reader::read_frames() {
   }
 
   // Lock camera settings to prevent auto-adjustments
-  // cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);  // Manual exposure
-  // cap.set(cv::CAP_PROP_EXPOSURE, -6);         // Fixed exposure value
-  // cap.set(cv::CAP_PROP_GAIN, 0);              // Fixed gain
-
-  // Force consistent frame timing
-  // cap.set(cv::CAP_PROP_BUFFERSIZE, 1);  // Reduce buffering
+  cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);  // Manual exposure
+  cap.set(cv::CAP_PROP_EXPOSURE, -7);      // Fixed exposure value
+  cap.set(cv::CAP_PROP_FRAME_WIDTH, 320);
+  cap.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
 
   // FPS calculation variables
   int frame_count = 0;
-  auto start = std::chrono::steady_clock::now();
+  float frame_time = 0;
 
   while (cap.isOpened()) {
+    auto loop_start = std::chrono::steady_clock::now();
     cv::Mat capture;
     cap >> capture;
     if (capture.empty()) break;
 
-    // Downscale for faster processing (640x320 vs original resolution)
-    cv::Mat new_cap;
-    cv::resize(capture, new_cap, cv::Size(640, 320));
-
     try {
       // Frame skipping: only process every 3rd frame to reduce load
       if (frame_count % 3 == 0) {
-        output_queue.push(std::move(new_cap));
+        output_queue.push(std::move(capture));
       }
     } catch (...) {
       std::cerr << "Error: Exception caught.\n";
       break;
     }
 
+    // Calculate total loop time
+    auto loop_end = std::chrono::steady_clock::now();
+    auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+        loop_end - loop_start);
+
+    // FPS Calculation
+    frame_time += loop_time.count() * 1000;
     frame_count++;
+
+    if (frame_count % 90 == 0) {
+      std::cout << "================================\n";
+      std::cout << "+++ READER +++\n";
+      float avg_processing_time = frame_time / 90;
+      float fps = 1 / (avg_processing_time / 1000);
+      std::cout << "[TIMING] Average Frame Loading: " << std::fixed
+                << std::setprecision(2) << avg_processing_time << " ms\n";
+      std::cout << "[TIMING] Frame Reader FPS: " << std::fixed
+                << std::setprecision(2) << fps << "fps\n";
+      std::cout << "================================\n";
+      frame_time = 0;
+      frame_count = 0;
+    }
   }
-
-  // Calculate and reset FPS counter every second
-  auto end = std::chrono::steady_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-
-  if (duration.count() >= 1) {
-    double fps = frame_count / 1.0;
-    std::cout << "+++ READER +++\n";
-    std::cout << "================================\n";
-    std::cout << "[TIMING] Frame Reader FPS = " << fps << "\n";
-    std::cout << "================================\n";
-  }
-
-  frame_count = 0;
-  start = end;
   cap.release();
 }
 

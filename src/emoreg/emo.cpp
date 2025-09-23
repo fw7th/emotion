@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "mat.h"
+#include "smoothing.h"
 
 Emotion::Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
                  const std::string &bin_path_, const std::string &param_path_)
@@ -45,7 +46,7 @@ std::unordered_map<int, std::string> Emotion::emotions_ = {
 
 void Emotion::load() {
   int frame_count = 0;
-  auto fps_timer_start = std::chrono::steady_clock::now();
+  float frame_time = 0;
 
   cv::namedWindow("Emotion Detection", cv::WINDOW_NORMAL);
   cv::resizeWindow("Emotion Detection", 480, 320);
@@ -84,37 +85,24 @@ void Emotion::load() {
     auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
         loop_end - loop_start);
 
+    // FPS calculation
+    frame_time += loop_time.count() * 1000;
+    frame_count++;
+
     if (frame_count % 30 == 0) {
-      /*
       std::cout << "================================\n";
       std::cout << "+++ EMOTION DETECTION +++\n";
-      std::cout << "[TIMING] Frame Pointer Access:     " << std::fixed
-                << std::setprecision(2) << frame_access_time.count() * 1000
-                << " ms\n";
-      std::cout << "[TIMING] Emotion Detection: " << std::fixed
-                << std::setprecision(2) << detect_time.count() * 1000
-                << " ms\n";
-      std::cout << "[TIMING] Total Emotion Loop:     " << std::fixed
-                << std::setprecision(2) << loop_time.count() * 1000 << " ms\n";
+      float avg_processing_time = frame_time / 30;
+      float fps = 1 / (avg_processing_time / 1000);
+      std::cout << "[TIMING] Average Frame Processing: " << std::fixed
+                << std::setprecision(2) << avg_processing_time << " ms\n";
+      std::cout << "[TIMING] FPS: " << std::fixed << std::setprecision(2) << fps
+                << " fps\n";
+      std::cout << "[TIMING] Total Emotion Loop: " << std::fixed
+                << std::setprecision(2) << loop_time.count() * 1000 << "ms\n";
       std::cout << "================================\n";
-      */
-    }
-
-    // FPS calculation
-    frame_count++;
-    auto fps_timer_end = std::chrono::steady_clock::now();
-    auto elapsed_seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(
-            fps_timer_end - fps_timer_start);
-
-    if (elapsed_seconds.count() >= 1.0) {
-      double fps = frame_count / elapsed_seconds.count();
-      /*
-      std::cout << "[TIMING] Emotion Detector FPS = " << std::fixed
-                << std::setprecision(1) << fps << "\n";
-      */
+      frame_time = 0;
       frame_count = 0;
-      fps_timer_start = fps_timer_end;
     }
   }
   cv::destroyAllWindows();
@@ -229,8 +217,9 @@ void Emotion::softmax(ncnn::Mat &nums) {
   float exp_sum = 0;
   for (int i = 0; i < nums.w; i++) exp_sum += std::exp(nums[i] - max_val);
 
-  for (int i = 0; i < nums.w; i++)
-    nums[i] = std::exp(nums[i] - max_val) / exp_sum;
+  for (int j = 0; j < nums.w; j++) {
+    nums[j] = std::exp(nums[j] - max_val) / exp_sum;
+  }
 }
 
 int Emotion::finalPred(ncnn::Mat &input) {
