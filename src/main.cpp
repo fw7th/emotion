@@ -7,8 +7,8 @@
 #include "customqueue.h"
 #include "emo.h"
 #include "reader.h"
-#include "tracker.h"
 #include "ultraface.h"
+#include "display.h"
 
 int main() {
   std::string input;
@@ -16,8 +16,8 @@ int main() {
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
-  std::string bin_emo = "../../data/detector/opt.bin";
-  std::string param_emo = "../../data/detector/opt.param";
+  std::string bin_emo = "../../data/detector/mobilenet.bin";
+  std::string param_emo = "../../data/detector/mobilenet.param";
 
   std::cout << "Enter input source: ";
   std::cin >> input;
@@ -58,6 +58,7 @@ int main() {
 
   ts::TSQueue<cv::Mat> reader_queue;
   ts::TSQueue<std::unique_ptr<UltraStruct>> detect_queue;
+  ts::TSQueue<std::unique_ptr<UltraStruct>> emotion_queue;
 
   read::Reader reader(reader_queue);
   reader.setSource(source);
@@ -65,15 +66,18 @@ int main() {
   UltraFace ultraface(reader_queue, detect_queue, bin_ultra, param_ultra, 64,
                       64, 0.7);  // config model input
 
-  Emotion emote(detect_queue, bin_emo, param_emo);
+  Emotion emote(detect_queue, emotion_queue, bin_emo, param_emo);
+  Display show(emotion_queue);
 
   std::thread t1([&]() { reader.read_frames(); });
   std::thread t2([&]() { ultraface.infer(); });
   std::thread t9([&]() { emote.load(); });
+  std::thread t4([&]() { show.display(); });
 
   t1.join();
   t2.join();
   t9.join();
+  t4.join();
 
   return 0;
 }

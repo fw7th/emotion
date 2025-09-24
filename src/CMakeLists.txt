@@ -30,6 +30,7 @@ message(STATUS "OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
 add_subdirectory(reader)
 add_subdirectory(detection)
 add_subdirectory(emoreg)
+add_subdirectory(display)
 
 add_executable(emotion main.cpp)
-target_link_libraries(emotion PRIVATE readerLib UltraFace Emote)
+target_link_libraries(emotion PRIVATE readerLib UltraFace Emote displayLib)

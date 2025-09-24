@@ -24,9 +24,8 @@ class Emotion {
   cv::Mat gray_frame;
   int num_cores;
 
-  int maxIndex(ncnn::Mat &probs);
-  int predict(cv::Mat &frame1);
-  int finalPred(ncnn::Mat &input1);
+  std::pair<int, float> predict(cv::Mat &frame);
+  std::pair<int, float> finalPred(ncnn::Mat &input1);
   void preprocess(const cv::Mat &frame);
   void softmax(ncnn::Mat &nums);
   void infer(cv::Mat &infer);
@@ -40,5 +39,6 @@ class Emotion {
   const std::string &bin_path;
   const std::string &param_path;
   ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue;
+  ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue;
   void load();
 };

@@ -73,6 +73,7 @@ void Reader::read_frames() {
     frame_count++;
 
     if (frame_count % 90 == 0) {
+      /*
       std::cout << "================================\n";
       std::cout << "+++ READER +++\n";
       float avg_processing_time = frame_time / 90;
@@ -82,6 +83,7 @@ void Reader::read_frames() {
       std::cout << "[TIMING] Frame Reader FPS: " << std::fixed
                 << std::setprecision(2) << fps << "fps\n";
       std::cout << "================================\n";
+      */
       frame_time = 0;
       frame_count = 0;
     }

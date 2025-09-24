@@ -13,8 +13,10 @@
 #include "smoothing.h"
 
 Emotion::Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
+                 ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
                  const std::string &bin_path_, const std::string &param_path_)
     : input_queue(input_queue_),
+      output_queue(output_queue_),
       bin_path(bin_path_),
       param_path(param_path_)
 
@@ -71,14 +73,27 @@ void Emotion::load() {
 
     cv::Mat &frame = opt_ultra_ptr.value()->frame;
 
-    infer(frame);
+    preprocess(frame);
 
-    if (frame.empty()) {
-      // std::cout << "Emotion frame is empty.\n";
-    }
+    auto predict_start = std::chrono::steady_clock::now();
 
-    cv::imshow("Emotion Detection", frame);
-    cv::waitKey(1);
+    // Unpack predictions and confidence
+    auto result = predict(bright_frame);
+    int predicted_class = result.first;
+    float confidence = result.second;
+
+    auto predict_end = std::chrono::steady_clock::now();
+    auto predict_time =
+        std::chrono::duration_cast<std::chrono::duration<double>>(
+            predict_end - predict_start);
+
+    std::string prediction = emotions_[predicted_class];
+
+    cv::putText(frame, prediction, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN,
+                1.0, cv::Scalar(100, 150, 20), 3);
+
+    opt_ultra_ptr->frame = std::move(frame);
+    output_queue.push(std::move(opt_ultra_ptr));
 
     // Calculate total loop time
     auto loop_end = std::chrono::steady_clock::now();
@@ -100,6 +115,11 @@ void Emotion::load() {
                 << " fps\n";
       std::cout << "[TIMING] Total Emotion Loop: " << std::fixed
                 << std::setprecision(2) << loop_time.count() * 1000 << "ms\n";
+      std::cout << "[SANITY] Predicted Class: " << prediction << "\n";
+      std::cout << "[SANITY] Prediction Confidence: " << confidence << "\n";
+      std::cout << "[TIMING] Prediction Function Time: " << std::fixed
+                << std::setprecision(2) << predict_time.count() * 1000
+                << " ms\n";
       std::cout << "================================\n";
       frame_time = 0;
       frame_count = 0;
@@ -117,41 +137,45 @@ void Emotion::infer(cv::Mat &frame) {
 
   auto predict_start = std::chrono::steady_clock::now();
 
-  int emotion_idx = predict(bright_frame);
+  // Unpack predictions and confidence
+  auto result = predict(bright_frame);
+  int predicted_class = result.first;
+  float confidence = result.second;
 
   auto predict_end = std::chrono::steady_clock::now();
   auto predict_time = std::chrono::duration_cast<std::chrono::duration<double>>(
       predict_end - predict_start);
 
-  std::string emotion_text = emotions_[emotion_idx];
+  std::string prediction = emotions_[predicted_class];
 
-  cv::putText(frame, emotion_text, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN,
-              1.0, cv::Scalar(0, 0, 200), 3);
+  cv::putText(frame, prediction, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN, 1.0,
+              cv::Scalar(100, 150, 20), 3);
 
   auto final_end = std::chrono::steady_clock::now();
   auto final_time = std::chrono::duration_cast<std::chrono::duration<double>>(
       final_end - final_start);
 
   if (loop_count % 30 == 0) {
-    /*
     std::cout << "+++ Infer Method +++\n";
+    std::cout << "[SANITY] Predicted Class: " << prediction << "\n";
+    std::cout << "[SANITY] Prediction Confidence: " << confidence << "\n";
     std::cout << "[TIMING] Prediction Function Time: " << std::fixed
               << std::setprecision(2) << predict_time.count() * 1000 << " ms\n";
 
-    std::cout << "[TIMING] Full Prediction Time:     " << std::fixed
+    std::cout << "[TIMING] Full Prediction Time: " << std::fixed
               << std::setprecision(2) << final_time.count() * 1000 << " ms\n";
-    */
+    std::cout << "================================\n";
   }
   loop_count++;
 }
 
-int Emotion::predict(cv::Mat &frame1) {
+std::pair<int, float> Emotion::predict(cv::Mat &frame) {
   int _predict_count = 0;
-  int w = frame1.cols;
-  int h = frame1.rows;
+  int w = frame.cols;
+  int h = frame.rows;
 
   ncnn::Mat inmat = ncnn::Mat::from_pixels_resize(
-      frame1.data, ncnn::Mat::PIXEL_GRAY, w, h, 96, 96);
+      frame.data, ncnn::Mat::PIXEL_GRAY, w, h, 96, 96);
   float mean[1] = {127.5f};
   float norm[1] = {1 / 127.5f};
   inmat.substract_mean_normalize(mean, norm);
@@ -181,10 +205,10 @@ int Emotion::predict(cv::Mat &frame1) {
     */
   }
 
-  int emotion_idx = finalPred(out1);
+  auto result = finalPred(out1);
   _predict_count++;
 
-  return emotion_idx;
+  return result;
 }
 
 void Emotion::preprocess(const cv::Mat &frame) {
@@ -192,39 +216,51 @@ void Emotion::preprocess(const cv::Mat &frame) {
   cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
 
   // Brighten frame
-  double brightness_value = 60;
+  double brightness_value = 50;
   bright_frame = gray_frame + cv::Scalar(brightness_value);
 }
 
-int Emotion::maxIndex(ncnn::Mat &probs) {
-  float max_val = -FLT_MAX;
-  int max_index = 0;
+void Emotion::softmax(ncnn::Mat &nums) {
+  // Check the size of the input
+  std::cout << "Input vector size: " << nums.w << std::endl;
+
+  // Print the raw input values before softmax
+  std::cout << "Raw input values: ";
+
+  for (int i = 0; i < nums.w; i++) {
+    std::cout << nums[i] << " ";
+  }
+  std::cout << std::endl;
+  float confidence_scores = -FLT_MAX;
+  for (int i = 0; i < nums.w; i++)
+    confidence_scores = std::max(confidence_scores, nums[i]);
+
+  float exp_sum = 0;
+  for (int i = 0; i < nums.w; i++)
+    exp_sum += std::exp(nums[i] - confidence_scores);
+
+  for (int j = 0; j < nums.w; j++) {
+    nums[j] = std::exp(nums[j] - confidence_scores) / exp_sum;
+  }
+  // Print the output values after softmax
+  std::cout << "Softmax output values: ";
+  for (int i = 0; i < nums.w; i++) {
+    std::cout << nums[i] << " ";
+  }
+  std::cout << std::endl;
+}
+
+std::pair<int, float> Emotion::finalPred(ncnn::Mat &probs) {
+  softmax(probs);
+  int predicted_class = 1;
+  float confidence = -FLT_MAX;
 
   for (int i = 0; i < probs.w; ++i) {
     float val = probs[i];
-    if (val > max_val) {
-      max_val = val;
-      max_index = i;
+    if (val > confidence) {
+      confidence = val;
+      predicted_class = i;
     }
   }
-  return max_index;
-}
-
-void Emotion::softmax(ncnn::Mat &nums) {
-  float max_val = -FLT_MAX;
-  for (int i = 0; i < nums.w; i++) max_val = std::max(max_val, nums[i]);
-
-  float exp_sum = 0;
-  for (int i = 0; i < nums.w; i++) exp_sum += std::exp(nums[i] - max_val);
-
-  for (int j = 0; j < nums.w; j++) {
-    nums[j] = std::exp(nums[j] - max_val) / exp_sum;
-  }
-}
-
-int Emotion::finalPred(ncnn::Mat &input) {
-  softmax(input);
-  int emotion_idx = maxIndex(input);
-
-  return emotion_idx;
+  return {predicted_class, confidence};
 }
