@@ -62,7 +62,7 @@ void Emotion::load() {
       continue;
     }
 
-    auto opt_ultra_ptr = std::move(input_queue.pop());
+    auto opt_ultra_ptr = input_queue.pop();
 
     if (!opt_ultra_ptr.has_value()) {
       // std::cerr << "Error: opt_ultra_ptr is empty" << std::endl;
@@ -71,9 +71,9 @@ void Emotion::load() {
       continue;
     }
 
-    cv::Mat &frame = opt_ultra_ptr.value()->frame;
+    cv::Mat img = opt_ultra_ptr.value()->frame;
 
-    preprocess(frame);
+    preprocess(img);
 
     auto predict_start = std::chrono::steady_clock::now();
 
@@ -89,11 +89,11 @@ void Emotion::load() {
 
     std::string prediction = emotions_[predicted_class];
 
+    cv::Mat &frame = opt_ultra_ptr.value()->frame;
     cv::putText(frame, prediction, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN,
                 1.0, cv::Scalar(100, 150, 20), 3);
 
-    opt_ultra_ptr->frame = std::move(frame);
-    output_queue.push(std::move(opt_ultra_ptr));
+    output_queue.push(opt_ultra_ptr.value());
 
     // Calculate total loop time
     auto loop_end = std::chrono::steady_clock::now();
@@ -222,15 +222,17 @@ void Emotion::preprocess(const cv::Mat &frame) {
 
 void Emotion::softmax(ncnn::Mat &nums) {
   // Check the size of the input
-  std::cout << "Input vector size: " << nums.w << std::endl;
+  //std::cout << "Input vector size: " << nums.w << std::endl;
 
   // Print the raw input values before softmax
+  /*
   std::cout << "Raw input values: ";
 
   for (int i = 0; i < nums.w; i++) {
     std::cout << nums[i] << " ";
   }
   std::cout << std::endl;
+  */
   float confidence_scores = -FLT_MAX;
   for (int i = 0; i < nums.w; i++)
     confidence_scores = std::max(confidence_scores, nums[i]);
@@ -243,11 +245,13 @@ void Emotion::softmax(ncnn::Mat &nums) {
     nums[j] = std::exp(nums[j] - confidence_scores) / exp_sum;
   }
   // Print the output values after softmax
+  /*
   std::cout << "Softmax output values: ";
   for (int i = 0; i < nums.w; i++) {
     std::cout << nums[i] << " ";
   }
   std::cout << std::endl;
+  */
 }
 
 std::pair<int, float> Emotion::finalPred(ncnn::Mat &probs) {

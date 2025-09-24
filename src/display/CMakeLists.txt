@@ -1,8 +1,9 @@
+cmake_minimum_required(VERSION 3.10)
+
 add_library(displayLib STATIC display.cpp)
 
 target_include_directories(
-    displayLib 
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} 
+    displayLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} 
     ${OpenCV_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/utils
 )
 

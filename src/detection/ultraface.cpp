@@ -176,7 +176,6 @@ void UltraFace::infer() {  // ~9ms inference max.
 
     // Print detailed timing every 30 frames
     if (frame_count % 30 == 0) {
-      /*
       std::cout << "================================\n";
       std::cout << "+++ FACE DETECTOR +++\n";
       std::cout << "[TIMING] Frame Copy: " << std::fixed << std::setprecision(2)
@@ -194,7 +193,6 @@ void UltraFace::infer() {  // ~9ms inference max.
       std::cout << "[TIMING] Faces Detected: " << face_info.size() << "\n";
 
       std::cout << "================================\n";
-      */
       frame_time = 0;
       frame_count = 0;
     }

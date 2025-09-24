@@ -32,6 +32,7 @@ class Emotion {
 
  public:
   Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
+          ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
           const std::string &bin_path_, const std::string &param_path_);
   Emotion(const Emotion &) = delete;             // Delete copy constructor
   Emotion &operator=(const Emotion &) = delete;  // Delete copy assignment

@@ -29,7 +29,7 @@ void Display::display() {
       continue;
     }
 
-    auto opt_emotion_ptr = std::move(input_queue.pop());
+    auto opt_emotion_ptr = input_queue.pop();
 
     if (!opt_emotion_ptr.has_value()) {
       // std::cerr << "Error: opt_emotion_ptr is empty" << std::endl;
