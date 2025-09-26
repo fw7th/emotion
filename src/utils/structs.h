@@ -5,16 +5,16 @@
 #include <string>
 #include <vector>
 
-typedef struct Bbox {
+struct Bbox {
   cv::Point pt1;
   cv::Point pt2;
 
-} Bbox;
+};
 
-typedef struct FrameInfo {
+struct FrameInfo {
   cv::Mat frame;
   std::vector<Bbox> bboxes;
   std::vector<std::string> predictions;
   std::vector<float> confidences;
 
-} FrameInfo;
+};

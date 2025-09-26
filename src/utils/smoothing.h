@@ -106,3 +106,105 @@ class RobustEmotionStabilizer {
     return hysteresis_stabilizer.stabilize(confidence_result);
   }
 };
+
+struct Person {
+    int id;
+    cv::Rect bbox;
+    std::string emotion;
+    float confidence;
+    int frames_since_seen = 0;
+};
+
+class MultiPersonEmotionStabilizer {
+private:
+    std::map<int, ConfidenceStabilizer> person_stabilizers;
+    std::vector<Person> tracked_people;
+    int next_person_id = 0;
+    int max_frames_missing = 30;  // Remove person after 30 frames
+    float iou_threshold = 0.5f;   // For bbox matching
+    
+    float calculateIoU(const cv::Rect& a, const cv::Rect& b) {
+        int x1 = std::max(a.x, b.x);
+        int y1 = std::max(a.y, b.y);
+        int x2 = std::min(a.x + a.width, b.x + b.width);
+        int y2 = std::min(a.y + a.height, b.y + b.height);
+        
+        if (x2 <= x1 || y2 <= y1) return 0.0f;
+        
+        int intersection = (x2 - x1) * (y2 - y1);
+        int union_area = a.area() + b.area() - intersection;
+        
+        return static_cast<float>(intersection) / union_area;
+    }
+    
+public:
+    std::vector<Person> update(const std::vector<cv::Rect>& bboxes, 
+                               const std::vector<std::string>& emotions,
+                               const std::vector<float>& confidences) {
+        
+        // Mark all people as potentially missing
+        for (auto& person : tracked_people) {
+            person.frames_since_seen++;
+        }
+        
+        // Match detections to existing people
+        std::vector<bool> detection_matched(bboxes.size(), false);
+        
+        for (size_t i = 0; i < bboxes.size(); i++) {
+            int best_match_id = -1;
+            float best_iou = 0.0f;
+            
+            // Find best matching existing person
+            for (auto& person : tracked_people) {
+                if (person.frames_since_seen < max_frames_missing) {
+                    float iou = calculateIoU(bboxes[i], person.bbox);
+                    if (iou > iou_threshold && iou > best_iou) {
+                        best_iou = iou;
+                        best_match_id = person.id;
+                    }
+                }
+            }
+            
+            if (best_match_id != -1) {
+                // Update existing person
+                auto it = std::find_if(tracked_people.begin(), tracked_people.end(),
+                    [best_match_id](const Person& p) { return p.id == best_match_id; });
+                
+                it->bbox = bboxes[i];
+                it->emotion = person_stabilizers[best_match_id].stabilize(emotions[i], confidences[i]);
+                it->confidence = confidences[i];
+                it->frames_since_seen = 0;
+                detection_matched[i] = true;
+            }
+        }
+        
+        // Add new people for unmatched detections
+        for (size_t i = 0; i < bboxes.size(); i++) {
+            if (!detection_matched[i]) {
+                Person new_person;
+                new_person.id = next_person_id++;
+                new_person.bbox = bboxes[i];
+                new_person.emotion = emotions[i];  // Start with raw detection
+                new_person.confidence = confidences[i];
+                new_person.frames_since_seen = 0;
+                
+                tracked_people.push_back(new_person);
+                person_stabilizers[new_person.id] = ConfidenceStabilizer();
+            }
+        }
+        
+        // Remove people who haven't been seen for too long
+        tracked_people.erase(
+            std::remove_if(tracked_people.begin(), tracked_people.end(),
+                [this](const Person& p) {
+                    if (p.frames_since_seen >= max_frames_missing) {
+                        person_stabilizers.erase(p.id);
+                        return true;
+                    }
+                    return false;
+                }), 
+            tracked_people.end());
+        
+        return tracked_people;
+    }
+};

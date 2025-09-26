@@ -13,7 +13,7 @@
 
 class Emotion {
  private:
-  static constexpr int FRAME_SIZE = 96;
+  static constexpr int FRAME_SIZE = 64;
   static constexpr int NUM_EMOTIONS = 7;
   static std::unordered_map<int, std::string> emotions_;
 

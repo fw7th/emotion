@@ -112,7 +112,6 @@ void Emotion::load() {
       frame_count = 0;
     }
   }
-  cv::destroyAllWindows();
 }
 
 std::pair<std::string, float> Emotion::infer(cv::Mat &frame) {
@@ -161,7 +160,7 @@ std::pair<int, float> Emotion::predict(cv::Mat &frame) {
   int h = frame.rows;
 
   ncnn::Mat inmat = ncnn::Mat::from_pixels_resize(
-      frame.data, ncnn::Mat::PIXEL_GRAY, w, h, 96, 96);
+      frame.data, ncnn::Mat::PIXEL_GRAY, w, h, 64, 64);
   float mean[1] = {127.5f};
   float norm[1] = {1 / 127.5f};
   inmat.substract_mean_normalize(mean, norm);
@@ -198,13 +197,13 @@ std::pair<int, float> Emotion::predict(cv::Mat &frame) {
 }
 
 cv::Mat Emotion::roiCrop(float x1, float y1, float x2, float y2,
-                          cv::Mat &frame) {
-  float width = (x2 - x1) + 35;
-  float height = (y2 - y1) + 35;
+                         cv::Mat &frame) {
+  float width = (x2 - x1) + 10;
+  float height = (y2 - y1) + 10;
 
   // FIX: Clamp to frame boundaries
-  int roi_x = std::max(0, (int)(x1 - 20));
-  int roi_y = std::max(0, (int)(y1 - 20));
+  int roi_x = std::max(0, (int)(x1 - 10));
+  int roi_y = std::max(0, (int)(y1 - 10));
   int roi_w = std::min((int)width, frame.cols - roi_x);
   int roi_h = std::min((int)height, frame.rows - roi_y);
 
@@ -217,7 +216,7 @@ void Emotion::preprocess(const cv::Mat &frame) {
   cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
 
   // Brighten frame
-  double brightness_value = 50;
+  double brightness_value = 25;
   bright_frame = gray_frame + cv::Scalar(brightness_value);
 }
 

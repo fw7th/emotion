@@ -16,8 +16,8 @@ int main() {
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
-  std::string bin_emo = "../../data/mobilenet-new/opt.bin";
-  std::string param_emo = "../../data/mobilenet-new/opt.param";
+  std::string bin_emo = "../../data/mobilenet-new/mobilenet_v2.bin";
+  std::string param_emo = "../../data/mobilenet-new/mobilenet_v2.param";
 
   std::cout << "Enter input source: ";
   std::cin >> input;
@@ -60,7 +60,7 @@ int main() {
   ts::TSQueue<std::unique_ptr<FrameInfo>> detect_queue;
   ts::TSQueue<std::unique_ptr<FrameInfo>> emotion_queue;
 
-  read::Reader reader(reader_queue);
+  Reader reader(reader_queue);
   reader.setSource(source);
 
   UltraFace ultraface(reader_queue, detect_queue, bin_ultra, param_ultra, 64,

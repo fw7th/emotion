@@ -6,7 +6,6 @@
 
 #include "structs.h"
 
-namespace read {
 
 /**
  * Video frame reader that captures from camera or file and feeds frames to a queue.
@@ -37,4 +36,3 @@ public:
   void read_frames();
 };
 
-} // namespace read
