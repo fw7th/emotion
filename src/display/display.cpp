@@ -3,9 +3,6 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
 #include <thread>
 
 Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_)
@@ -14,6 +11,31 @@ Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_)
 }
 
 Display::~Display() {}
+
+void Display::textBox(cv::Mat &frame, const cv::Point pt,
+                      const std::string &text) {
+  int x_start = pt.x;
+  int y_start = pt.y - 15;
+
+  int x_end = pt.x + 55;
+  int y_end = pt.y;
+
+  cv::rectangle(frame, cv::Point(x_start, y_start), cv::Point(x_end, y_end),
+                cv::Scalar(150, 255, 0), cv::FILLED);
+
+  int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+  double fontScale = 0.4;
+  int thickness = 1;
+  int baseline = 0;
+  cv::Size textSize =
+      cv::getTextSize(text, fontFace, fontScale, thickness, &baseline);
+
+  cv::Point textOrigin(pt.x + 3, pt.y - 4);
+
+  cv::Scalar textColor(255, 255, 255);  // White text
+  cv::putText(frame, text, textOrigin, fontFace, fontScale, textColor,
+              thickness, cv::LINE_AA);
+}
 
 void Display::display() {
   int frame_count = 0;
@@ -31,16 +53,25 @@ void Display::display() {
       continue;
     }
 
-    auto opt_emotion_ptr = input_queue.pop();
+    auto emotion_ptr_wrapped = input_queue.pop();
 
-    if (!opt_emotion_ptr.has_value()) {
+    if (!emotion_ptr_wrapped.has_value()) {
       // std::cerr << "Error: opt_emotion_ptr is empty" << std::endl;
 
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
       continue;
     }
 
-    cv::Mat &frame = opt_emotion_ptr.value()->frame;
+    auto &emotion_ptr = emotion_ptr_wrapped.value();
+    cv::Mat &frame = emotion_ptr->frame;
+    const std::vector<Bbox> &boxes = emotion_ptr->bboxes;
+    const std::vector<std::string> &emotions = emotion_ptr->predictions;
+
+    for (int i = 0; i < boxes.size(); i++) {
+      textBox(frame, boxes[i].pt1, emotions[i]);
+      cv::rectangle(frame, boxes[i].pt1, boxes[i].pt2, cv::Scalar(150, 255, 0),
+                    1);
+    }
 
     if (frame.empty()) {
       // std::cout << "Emotion frame is empty.\n";

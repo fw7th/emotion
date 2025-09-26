@@ -16,8 +16,8 @@ int main() {
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
-  std::string bin_emo = "../../data/mobilenet/mobilenet_v3.bin";
-  std::string param_emo = "../../data/mobilenet/mobilenet_v3.param";
+  std::string bin_emo = "../../data/mobilenet-new/opt.bin";
+  std::string param_emo = "../../data/mobilenet-new/opt.param";
 
   std::cout << "Enter input source: ";
   std::cin >> input;
