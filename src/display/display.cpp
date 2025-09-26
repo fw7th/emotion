@@ -5,87 +5,95 @@
 #include <iostream>
 #include <thread>
 
-Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_)
+Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>>& input_queue_)
     : input_queue(input_queue_) {
-  std::cout << "Display Started.\n";
+  std::cout << "Display module initialized\n";
 }
 
-Display::~Display() {}
+Display::~Display() { cv::destroyAllWindows(); }
 
-void Display::textBox(cv::Mat &frame, const cv::Point pt,
-                      const std::string &text) {
-  int x_start = pt.x;
-  int y_start = pt.y - 15;
-
-  int x_end = pt.x + 55;
-  int y_end = pt.y;
-
-  cv::rectangle(frame, cv::Point(x_start, y_start), cv::Point(x_end, y_end),
-                cv::Scalar(150, 255, 0), cv::FILLED);
-
+void Display::textBox(cv::Mat& frame, const cv::Point pt,
+                      const std::string& text) {
+  // Calculate text dimensions for proper box sizing
   int fontFace = cv::FONT_HERSHEY_SIMPLEX;
   double fontScale = 0.4;
   int thickness = 1;
   int baseline = 0;
+
   cv::Size textSize =
       cv::getTextSize(text, fontFace, fontScale, thickness, &baseline);
 
-  cv::Point textOrigin(pt.x + 3, pt.y - 4);
+  // Create background box with padding
+  int padding = 3;
+  int x_start = pt.x;
+  int y_start = pt.y - textSize.height - padding * 2;
+  int x_end = pt.x + textSize.width + padding * 2;
+  int y_end = pt.y;
 
-  cv::Scalar textColor(255, 255, 255);  // White text
-  cv::putText(frame, text, textOrigin, fontFace, fontScale, textColor,
-              thickness, cv::LINE_AA);
+  // Draw background rectangle
+  cv::rectangle(frame, cv::Point(x_start, y_start), cv::Point(x_end, y_end),
+                cv::Scalar(150, 255, 0), cv::FILLED);
+
+  // Draw text
+  cv::Point textOrigin(pt.x + padding, pt.y - padding);
+  cv::putText(frame, text, textOrigin, fontFace, fontScale,
+              cv::Scalar(255, 255, 255), thickness, cv::LINE_AA);
 }
 
 void Display::display() {
   int frame_count = 0;
   float frame_time = 0;
 
+  // Create display window
   cv::namedWindow("Display", cv::WINDOW_NORMAL);
   cv::resizeWindow("Display", 480, 320);
 
   while (true) {
     auto loop_start = std::chrono::steady_clock::now();
 
-    // Check queue and get frame
+    // Get frame from input queue
     if (input_queue.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
     }
 
     auto emotion_ptr_wrapped = input_queue.pop();
-
     if (!emotion_ptr_wrapped.has_value()) {
-      // std::cerr << "Error: opt_emotion_ptr is empty" << std::endl;
-
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
       continue;
     }
 
-    auto &emotion_ptr = emotion_ptr_wrapped.value();
-    cv::Mat &frame = emotion_ptr->frame;
-    const std::vector<Bbox> &boxes = emotion_ptr->bboxes;
-    const std::vector<std::string> &emotions = emotion_ptr->predictions;
+    auto& emotion_ptr = emotion_ptr_wrapped.value();
+    cv::Mat& frame = emotion_ptr->frame;
 
-    for (int i = 0; i < boxes.size(); i++) {
+    if (frame.empty()) {
+      continue;
+    }
+
+    // Draw bounding boxes and emotion labels
+    const std::vector<Bbox>& boxes = emotion_ptr->bboxes;
+    const std::vector<std::string>& emotions = emotion_ptr->predictions;
+
+    for (size_t i = 0; i < boxes.size() && i < emotions.size(); i++) {
+      // Draw emotion label with background
       textBox(frame, boxes[i].pt1, emotions[i]);
+
+      // Draw bounding box
       cv::rectangle(frame, boxes[i].pt1, boxes[i].pt2, cv::Scalar(150, 255, 0),
                     1);
     }
 
-    if (frame.empty()) {
-      // std::cout << "Emotion frame is empty.\n";
+    // Display frame
+    cv::imshow("Display", frame);
+    if (cv::waitKey(1) == 27) {  // ESC key to exit
+      break;
     }
 
-    cv::imshow("Display", frame);
-    cv::waitKey(1);
-
-    // Calculate total loop time
+    // Performance monitoring
     auto loop_end = std::chrono::steady_clock::now();
     auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
         loop_end - loop_start);
 
-    // FPS calculation
     frame_time += loop_time.count() * 1000;
     frame_count++;
 
@@ -105,5 +113,6 @@ void Display::display() {
       frame_count = 0;
     }
   }
+
   cv::destroyAllWindows();
 }
