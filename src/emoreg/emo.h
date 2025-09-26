@@ -25,21 +25,33 @@ class Emotion {
   int num_cores;
 
   std::pair<int, float> predict(cv::Mat &frame);
+
   std::pair<int, float> finalPred(ncnn::Mat &input1);
+
   void preprocess(const cv::Mat &frame);
+
   void softmax(ncnn::Mat &nums);
-  void infer(cv::Mat &infer);
+
+  std::pair<std::string, float> infer(cv::Mat &frame);
+
+  cv::Mat roiCrop(float x1, float y1, float x2, float y2, cv::Mat &frame);
 
  public:
-  Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
-          ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
+  Emotion(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_,
+          ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue_,
           const std::string &bin_path_, const std::string &param_path_);
-  Emotion(const Emotion &) = delete;             // Delete copy constructor
+
+  Emotion(const Emotion &) = delete;  // Delete copy constructor
+
   Emotion &operator=(const Emotion &) = delete;  // Delete copy assignment
+
   ~Emotion();
+
   const std::string &bin_path;
   const std::string &param_path;
-  ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue;
-  ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue;
+
+  ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue;
+  ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue;
+
   void load();
 };

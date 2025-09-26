@@ -1,13 +1,20 @@
 #pragma once
 
 #include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 #include <string>
 #include <vector>
 
-typedef struct UltraStruct {
-  cv::Mat frame;
-  std::vector<cv::Mat> crops;
-  std::string prediction;
-  float confidence;
+typedef struct Bbox {
+  cv::Point pt1;
+  cv::Point pt2;
 
-} UltraStruct;
+} Bbox;
+
+typedef struct FrameInfo {
+  cv::Mat frame;
+  std::vector<Bbox> bboxes;
+  std::vector<std::string> predictions;
+  std::vector<float> confidences;
+
+} FrameInfo;

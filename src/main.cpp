@@ -56,9 +56,9 @@ int main() {
     source = input;
   }
 
-  ts::TSQueue<cv::Mat> reader_queue;
-  ts::TSQueue<std::unique_ptr<UltraStruct>> detect_queue;
-  ts::TSQueue<std::unique_ptr<UltraStruct>> emotion_queue;
+  ts::TSQueue<std::unique_ptr<FrameInfo>> reader_queue;
+  ts::TSQueue<std::unique_ptr<FrameInfo>> detect_queue;
+  ts::TSQueue<std::unique_ptr<FrameInfo>> emotion_queue;
 
   read::Reader reader(reader_queue);
   reader.setSource(source);

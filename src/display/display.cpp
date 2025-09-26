@@ -8,10 +8,12 @@
 #include <opencv2/imgproc.hpp>
 #include <thread>
 
-Display::Display(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_)
+Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_)
     : input_queue(input_queue_) {
   std::cout << "Display Started.\n";
 }
+
+Display::~Display() {}
 
 void Display::display() {
   int frame_count = 0;

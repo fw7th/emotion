@@ -20,8 +20,8 @@
 #include "funcs.h"
 #include "mat.h"
 
-UltraFace::UltraFace(ts::TSQueue<cv::Mat> &input_queue_,
-                     ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
+UltraFace::UltraFace(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_,
+                     ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue_,
                      const std::string &bin_path_,
                      const std::string &param_path_, int input_width,
                      int input_length, float score_threshold_,
@@ -104,13 +104,15 @@ void UltraFace::infer() {  // ~9ms inference max.
       continue;
     }
 
-    auto opt_frame = std::move(input_queue.pop());
-    if (!opt_frame.has_value()) {
+    auto reader_ptr_wrapped = input_queue.pop();
+    if (!reader_ptr_wrapped.has_value()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
       continue;
     }
 
-    cv::Mat &frame = opt_frame.value();
+    auto& reader_ptr = reader_ptr_wrapped.value();
+
+    cv::Mat frame = reader_ptr->frame;
 
     // Validate frame
     if (frame.empty() || frame.channels() != 3) {
@@ -121,20 +123,12 @@ void UltraFace::infer() {  // ~9ms inference max.
       continue;
     }
 
-    // Time frame cloning
-    auto copy_start = std::chrono::steady_clock::now();
-    cv::Mat frame_copy = frame.clone();
-    auto copy_end = std::chrono::steady_clock::now();
-    auto copy_time = std::chrono::duration_cast<std::chrono::duration<double>>(
-        copy_end - copy_start);
-
     // Convert to ncnn format
     ncnn::Mat inmat = ncnn::Mat::from_pixels(
         frame.data, ncnn::Mat::PIXEL_BGR2RGB, frame.cols, frame.rows);
 
     // Clear and prepare containers
     face_info.clear();
-    auto obj_ptr = std::make_unique<UltraStruct>();
 
     // Time face detection
     auto detect_start = std::chrono::steady_clock::now();
@@ -148,22 +142,15 @@ void UltraFace::infer() {  // ~9ms inference max.
       continue;
     }
 
-    // Pre-allocate crops vector
-    obj_ptr->crops.reserve(face_info.size());
-
-    // Time ROI processing (all faces together)
-    for (const auto &face :
-         face_info) {  // Use const reference, range-based loop
+    for (const auto &face : face_info) {
       cv::Point pt1(static_cast<int>(face.x1), static_cast<int>(face.y1));
       cv::Point pt2(static_cast<int>(face.x2), static_cast<int>(face.y2));
-
-      cv::Mat crop = roiCrop(face.x1, face.y1, face.x2, face.y2, frame_copy);
-      obj_ptr->crops.emplace_back(std::move(crop));
-      cv::rectangle(frame, pt1, pt2, cv::Scalar(0, 255, 0), 1);
+       
+     Bbox box{pt1, pt2};
+      reader_ptr->bboxes.emplace_back(box);
     }
 
-    obj_ptr->frame = std::move(frame);
-    output_queue.push(std::move(obj_ptr));
+    output_queue.push(reader_ptr);
 
     // Calculate total loop time
     auto loop_end = std::chrono::steady_clock::now();
@@ -178,8 +165,6 @@ void UltraFace::infer() {  // ~9ms inference max.
     if (frame_count % 30 == 0) {
       std::cout << "================================\n";
       std::cout << "+++ FACE DETECTOR +++\n";
-      std::cout << "[TIMING] Frame Copy: " << std::fixed << std::setprecision(2)
-                << copy_time.count() * 1000 << " ms\n";
       std::cout << "[TIMING] Face Detection: " << std::fixed
                 << std::setprecision(2) << detect_time.count() * 1000
                 << " ms\n";
@@ -199,24 +184,6 @@ void UltraFace::infer() {  // ~9ms inference max.
   }
 }
 
-cv::Mat UltraFace::roiCrop(float x1, float y1, float x2, float y2,
-                           cv::Mat &frame) {
-  float width = (x2 - x1) + 35;
-  float height = (y2 - y1) + 35;
-
-  // FIX: Clamp to frame boundaries
-  int roi_x = std::max(0, (int)(x1 - 20));
-  int roi_y = std::max(0, (int)(y1 - 20));
-  int roi_w = std::min((int)width, frame.cols - roi_x);
-  int roi_h = std::min((int)height, frame.rows - roi_y);
-
-  cv::Rect roi(roi_x, roi_y, roi_w, roi_h);
-  cv::Mat cropped = frame(roi);
-
-  cv::Mat resize_cropped;
-  cv::resize(cropped, resize_cropped, cv::Size(48, 48));
-  return resize_cropped;
-}
 
 int UltraFace::detect(ncnn::Mat &img, std::vector<FaceInfo> &face_list) {
   if (img.empty()) {

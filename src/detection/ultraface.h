@@ -40,8 +40,8 @@ typedef struct FaceInfo {
 
 class UltraFace {
  public:
-  UltraFace(ts::TSQueue<cv::Mat> &input_queue_,
-            ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
+  UltraFace(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_,
+            ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue_,
             const std::string &bin_path, const std::string &param_path,
             int input_width, int input_length, float score_threshold_ = 0.7,
             float iou_threshold_ = 0.3, int topk_ = -1);
@@ -53,10 +53,8 @@ class UltraFace {
   const std::string &bin_path;
   const std::string &param_path;
 
-  ts::TSQueue<cv::Mat> &input_queue;  // queue to recieve detections
-  ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue;
-
-  cv::Mat roiCrop(float x1, float y1, float x2, float y2, cv::Mat &frame);
+  ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue;  // queue to recieve detections
+  ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue;
 
   void infer();
 

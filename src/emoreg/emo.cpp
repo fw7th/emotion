@@ -12,8 +12,8 @@
 #include "mat.h"
 #include "smoothing.h"
 
-Emotion::Emotion(ts::TSQueue<std::unique_ptr<UltraStruct>> &input_queue_,
-                 ts::TSQueue<std::unique_ptr<UltraStruct>> &output_queue_,
+Emotion::Emotion(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_,
+                 ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue_,
                  const std::string &bin_path_, const std::string &param_path_)
     : input_queue(input_queue_),
       output_queue(output_queue_),
@@ -50,9 +50,6 @@ void Emotion::load() {
   int frame_count = 0;
   float frame_time = 0;
 
-  cv::namedWindow("Emotion Detection", cv::WINDOW_NORMAL);
-  cv::resizeWindow("Emotion Detection", 480, 320);
-
   while (true) {
     auto loop_start = std::chrono::steady_clock::now();
 
@@ -73,25 +70,20 @@ void Emotion::load() {
 
     cv::Mat img = opt_ultra_ptr.value()->frame;
 
-    preprocess(img);
+    if (img.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      continue;
+    }
+    const std::vector<Bbox> &boxes = opt_ultra_ptr.value()->bboxes;
 
-    auto predict_start = std::chrono::steady_clock::now();
-
-    // Unpack predictions and confidence
-    auto result = predict(bright_frame);
-    int predicted_class = result.first;
-    float confidence = result.second;
-
-    auto predict_end = std::chrono::steady_clock::now();
-    auto predict_time =
-        std::chrono::duration_cast<std::chrono::duration<double>>(
-            predict_end - predict_start);
-
-    std::string prediction = emotions_[predicted_class];
-
-    cv::Mat &frame = opt_ultra_ptr.value()->frame;
-    cv::putText(frame, prediction, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN,
-                1.0, cv::Scalar(100, 150, 20), 3);
+    if (!boxes.empty()) {
+      for (const auto &box : boxes) {
+        cv::Mat crop = roiCrop(box.pt1.x, box.pt1.y, box.pt2.x, box.pt2.y, img);
+        auto result = infer(crop);
+        opt_ultra_ptr.value()->predictions.emplace_back(result.first);
+        opt_ultra_ptr.value()->confidences.emplace_back(result.second);
+      }
+    }
 
     output_queue.push(opt_ultra_ptr.value());
 
@@ -115,11 +107,6 @@ void Emotion::load() {
                 << " fps\n";
       std::cout << "[TIMING] Total Emotion Loop: " << std::fixed
                 << std::setprecision(2) << loop_time.count() * 1000 << "ms\n";
-      std::cout << "[SANITY] Predicted Class: " << prediction << "\n";
-      std::cout << "[SANITY] Prediction Confidence: " << confidence << "\n";
-      std::cout << "[TIMING] Prediction Function Time: " << std::fixed
-                << std::setprecision(2) << predict_time.count() * 1000
-                << " ms\n";
       std::cout << "================================\n";
       frame_time = 0;
       frame_count = 0;
@@ -128,7 +115,7 @@ void Emotion::load() {
   cv::destroyAllWindows();
 }
 
-void Emotion::infer(cv::Mat &frame) {
+std::pair<std::string, float> Emotion::infer(cv::Mat &frame) {
   static int loop_count = 0;
 
   auto final_start = std::chrono::steady_clock::now();
@@ -146,10 +133,7 @@ void Emotion::infer(cv::Mat &frame) {
   auto predict_time = std::chrono::duration_cast<std::chrono::duration<double>>(
       predict_end - predict_start);
 
-  std::string prediction = emotions_[predicted_class];
-
-  cv::putText(frame, prediction, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN, 1.0,
-              cv::Scalar(100, 150, 20), 3);
+  std::string &prediction = emotions_[predicted_class];
 
   auto final_end = std::chrono::steady_clock::now();
   auto final_time = std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -167,6 +151,8 @@ void Emotion::infer(cv::Mat &frame) {
     std::cout << "================================\n";
   }
   loop_count++;
+
+  return {prediction, confidence};
 }
 
 std::pair<int, float> Emotion::predict(cv::Mat &frame) {
@@ -211,6 +197,21 @@ std::pair<int, float> Emotion::predict(cv::Mat &frame) {
   return result;
 }
 
+cv::Mat Emotion::roiCrop(float x1, float y1, float x2, float y2,
+                          cv::Mat &frame) {
+  float width = (x2 - x1) + 35;
+  float height = (y2 - y1) + 35;
+
+  // FIX: Clamp to frame boundaries
+  int roi_x = std::max(0, (int)(x1 - 20));
+  int roi_y = std::max(0, (int)(y1 - 20));
+  int roi_w = std::min((int)width, frame.cols - roi_x);
+  int roi_h = std::min((int)height, frame.rows - roi_y);
+
+  cv::Rect roi(roi_x, roi_y, roi_w, roi_h);
+  return frame(roi);
+}
+
 void Emotion::preprocess(const cv::Mat &frame) {
   // Turn img to grayscale
   cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
@@ -222,7 +223,7 @@ void Emotion::preprocess(const cv::Mat &frame) {
 
 void Emotion::softmax(ncnn::Mat &nums) {
   // Check the size of the input
-  //std::cout << "Input vector size: " << nums.w << std::endl;
+  // std::cout << "Input vector size: " << nums.w << std::endl;
 
   // Print the raw input values before softmax
   /*

@@ -10,7 +10,7 @@
 
 namespace read {
 
-Reader::Reader(ts::TSQueue<cv::Mat> &output_queue_)
+Reader::Reader(ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue_)
     : output_queue(output_queue_) {};
 
 void Reader::setSource(std::variant<int, std::string> s) {
@@ -38,8 +38,8 @@ void Reader::read_frames() {
   }
 
   // Lock camera settings to prevent auto-adjustments
-  cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);  // Manual exposure
-  cap.set(cv::CAP_PROP_EXPOSURE, -7);      // Fixed exposure value
+  //cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);  // Manual exposure
+  //cap.set(cv::CAP_PROP_EXPOSURE, -7);      // Fixed exposure value
   cap.set(cv::CAP_PROP_FRAME_WIDTH, 320);
   cap.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
 
@@ -56,7 +56,9 @@ void Reader::read_frames() {
     try {
       // Frame skipping: only process every 3rd frame to reduce load
       if (frame_count % 3 == 0) {
-        output_queue.push(std::move(capture));
+        auto obj_ptr = std::make_unique<FrameInfo>();
+        obj_ptr->frame = capture;
+        output_queue.push(std::move(obj_ptr));
       }
     } catch (...) {
       std::cerr << "Error: Exception caught.\n";

@@ -4,6 +4,8 @@
 #include <string>
 #include <variant>
 
+#include "structs.h"
+
 namespace read {
 
 /**
@@ -18,9 +20,9 @@ public:
   /**
    * @param output_queue Thread-safe queue to receive processed frames
    */
-  Reader(ts::TSQueue<cv::Mat> &output_queue_);
+  Reader(ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue_);
   
-  ts::TSQueue<cv::Mat> &output_queue;
+  ts::TSQueue<std::unique_ptr<FrameInfo>> &output_queue;
 
   /**
    * Set video source for capture
