@@ -25,7 +25,7 @@ def trainModel(train_loader, val_loader, history):
     best_val_loss = float("inf")
 
     # Training loop
-    max_epochs = 120
+    max_epochs = 70
 
     early_stopping = EarlyStopping(
         patience=8, delta=0.001, path=f"{base}/mobilenet_v3.pth"
