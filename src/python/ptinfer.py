@@ -1,32 +1,14 @@
 import torch
-import torch.nn as nn
-from torchvision import transforms, models
+from torchvision import transforms
 from PIL import Image
 import time
+from .model import createModel
 
 
-def createModel():
-    """Create model optimized for grayscale emotion recognition"""
-    model = models.mobilenet_v2(weights=None)
-
-    # Modify first conv layer for single-channel grayscale input
-    model.features[0][0] = nn.Conv2d(
-        1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
-    )
-
-    model.classifier[1] = nn.Linear(in_features=1280, out_features=7, bias=True)
-    model.classifier[0] = nn.Dropout(p=0.5, inplace=False)
-
-    for param in model.parameters():
-        param.requires_grad = False
-
-    return model
-
-
-def FER_image(img_path):
+def saveScript(img_path):
     model = createModel()
 
-    weights_path = "/home/fw7th/emotions/data/mobilenet-new/mobilenet_v2.pth"
+    weights_path = "/home/fw7th/emotions/data/mobilenet-v3/mobilenet_v3.pth"
     state_dict = torch.load(weights_path, map_location=torch.device("cpu"))
 
     model.load_state_dict(state_dict, strict=False)
@@ -78,7 +60,7 @@ def FER_image(img_path):
     traced_model = torch.jit.trace(model, dummy_input)
 
     # Save TorchScript model
-    traced_model.save("/home/fw7th/emotions/data/mobilenet-new/mobilenet_v2.pt")
+    ## traced_model.save("/home/fw7th/emotions/data/mobilenet-v3/v3.pt")
 
 
-FER_image("/home/fw7th/Pictures/me.jpg")
+saveScript("/home/fw7th/isolation/data/happy2.jpg")
