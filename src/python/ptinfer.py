@@ -60,7 +60,7 @@ def saveScript(img_path):
     traced_model = torch.jit.trace(model, dummy_input)
 
     # Save TorchScript model
-    ## traced_model.save("/home/fw7th/emotions/data/mobilenet-v3/v3.pt")
+    traced_model.save("/home/fw7th/emotions/data/mobilenet-v3/v3.pt")
 
 
-saveScript("/home/fw7th/isolation/data/happy2.jpg")
+saveScript("/home/fw7th/isolation/data/disgust.jpeg")
