@@ -1,6 +1,7 @@
 build/
 assets/
 data/
+*__pycache__/
 *.ipynb_checkpoints/
 *.pt
 *.pth
