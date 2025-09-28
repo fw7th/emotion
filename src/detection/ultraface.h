@@ -6,6 +6,8 @@
 //  Copyright © 2019 vealocia. All rights reserved.
 //
 
+// Portions adapted from Ultra-Light-Fast-Generic-Face-Detector-1MB by Linzaer (MIT License).
+
 #ifndef ULTRAFACE_H
 #define ULTRAFACE_H
 

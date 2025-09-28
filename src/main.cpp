@@ -5,22 +5,25 @@
 #include <variant>
 
 #include "customqueue.h"
+#include "display.h"
 #include "emo.h"
 #include "reader.h"
 #include "ultraface.h"
-#include "display.h"
 
-int main() {
-  std::string input;
+int main(int argc, char* argv[]) {
+  if (argc < 2) {
+    std::cerr << "Usage: " << argv[0] << " <input> input is the webcam ID.\n";
+    std::cerr << "RTSP streaming planned.\n";
+    return 1;
+  }
+
+  std::string input = argv[1];
 
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
   std::string bin_emo = "../../data/mobilenet-new/mobilenet_v2.bin";
   std::string param_emo = "../../data/mobilenet-new/mobilenet_v2.param";
-
-  std::cout << "Enter input source: ";
-  std::cin >> input;
 
   std::variant<int, std::string> source;
 
@@ -55,6 +58,7 @@ int main() {
   } catch (...) {
     source = input;
   }
+  std::cout << "Processing webcam with ID " << input << "as input.\n";
 
   ts::TSQueue<std::unique_ptr<FrameInfo>> reader_queue;
   ts::TSQueue<std::unique_ptr<FrameInfo>> detect_queue;

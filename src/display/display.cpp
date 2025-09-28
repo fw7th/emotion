@@ -83,12 +83,6 @@ void Display::display() {
                     1);
     }
 
-    // Display frame
-    cv::imshow("Display", frame);
-    if (cv::waitKey(1) == 27) {  // ESC key to exit
-      break;
-    }
-
     // Performance monitoring
     auto loop_end = std::chrono::steady_clock::now();
     auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -111,6 +105,22 @@ void Display::display() {
       std::cout << "================================\n";
       frame_time = 0;
       frame_count = 0;
+    }
+
+    // Display frame
+    auto now = std::chrono::steady_clock::now();
+    static auto last_display = now;
+    int display_interval_ms = 1000 / 100;  // cap at 100 fps
+
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                              last_display)
+            .count() >= display_interval_ms) {
+      cv::imshow("Display", frame);
+      last_display = now;
+    }
+    cv::waitKey(1);              // keep window responsive
+    if (cv::waitKey(1) == 27) {  // ESC key to exit
+      break;
     }
   }
 
