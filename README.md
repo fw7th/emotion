@@ -13,12 +13,12 @@ Motivation was a low power option for retail analysis.
 - Tested on: Intel i5-3320M, 8GB RAM
 
 ## Quick Start
-# Install dependencies
+### Install dependencies
 ```bash
 sudo apt install opencv-dev cmake
 ```
 
-# Clone and build
+### Clone and build
 ```bash
 git clone https://github.com/fw7th/emotion
 cd src
@@ -27,7 +27,7 @@ mkdir build && cd build
 cmake .. && make -j4
 ```
 
-# Run with webcam
+### Run with webcam
 ```bash
 ./emotion 0 ## 0 is the webcam ID.
 ```
@@ -59,6 +59,7 @@ Implementation details:
 ### Model Details
 Avaiable models:
 - MobileNetv2 pretrained w/ IMAGENET-V2 weights finetuned for the classification task (lower accuracy, but much faster processing speeds per frame).
+  
 - EfficientNet-lite0 pretrained w/ IMAGENET-V2 weights finetuned for emotion detection.
 Only change made to model architectures was in conv1 to allow grayscale inputs.
 Metrics are relayed in benchmarking details.
