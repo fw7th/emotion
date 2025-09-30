@@ -48,19 +48,19 @@ graph LR
 
 ## Technical Details
 ### Pipeline
-- Build system: CMake\
+- Build system: CMake
 - Implementation details: 
-   * Custom anti-copy queue,\
-   * print_type function used to print custom types.\
-   * Single person smoothing classes: hysterisis stabilizer, switching on constant high confidence.\
-   * Memory management, move semantics, and efficient vector usage.\
+   * Custom anti-copy queue.
+   * print_type function used to print custom types.
+   * Single person smoothing classes: hysterisis stabilizer, switching on constant high confidence.
+   * Memory management, move semantics, and efficient vector usage.
    * Multi-threaded architecuture.
 
 ### Model Details
 Avaiable models:
-- MobileNetv2 pretrained w/ IMAGENET-V2 weights finetuned for the classification task (lower accuracy, but much faster processing speeds per frame).
+- **MobileNetv2 pretrained w/ IMAGENET-V2 weights** finetuned for the classification task (lower accuracy, but much faster processing speeds per frame).
   
-- EfficientNet-lite0 pretrained w/ IMAGENET-V2 weights finetuned for emotion detection.
+- **EfficientNet-lite0 pretrained w/ IMAGENET-V2 weights**, finetuned.
 Only change made to model architectures was in conv1 to allow grayscale inputs.\
 Metrics are relayed in benchmarking details.<br>
 
@@ -70,24 +70,24 @@ Phase 2: Full conv layer backbone unfrozen.
 
 Models were allowed to train for as many epochs as possible till val loss plateaued and early stopping triggered.\
 Pytorch's ReduceLROnPlateau as our LR annealing strategy.\
-Models trained to detect 7 emotions:
+Models trained to detect 7 emotions:\
     [angry, disgust, fear, happy, neutral, sad, surprise]
 
-Data;
-- Dataset: FER2013 + Raf-db [~59k training images] [~10k test images] [~12k val images].
+**Data**;
+- Dataset: FER2013 + Raf-db [~59k training images]  [~10k test images]  [~12k val images].
 - Augmentations:
-    [GrayScaling]\
-    [ColorJitter; brightness=0.2, contrast=0.3]\
-    [RandomHorizontal flip; p=0.3]\
-    [RandomErasiing; p=0.3, value='random']\
-    [Tensors were normalized first to range [0,1] then to [-1,1]]
+    > GrayScaling
+    > ColorJitter; brightness=0.2, contrast=0.3]
+    > RandomHorizontal flip; p=0.3
+    > RandomErasiing; p=0.3, value='0.0'
+    > Tensors were normalized first to range [0,1] then to [-1,1]
 - Weighted class sampler to balance less represented classes like disgust and mitigate bias.
 - Batch size: 64
 
-Training;
+**Training**;
 - Optimizer: 
-    First phase: Adam(lr=1e-3, default values for other hyper params)\
-    Second phase: Adam (lr=1e-5, default vals)
+    + First phase: Adam(lr=1e-3, default values for other hyper params)\
+    + Second phase: Adam (lr=1e-5, default vals)
 - Norm-based gradient clipping.
 - Scheduler patience: 2
 - Early stopping patience: 8
