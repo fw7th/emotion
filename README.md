@@ -48,13 +48,13 @@ graph LR
 
 ## Technical Details
 ### Pipeline
-Build system: CMake\
-Implementation details: 
-    Custom anti-copy queue,\
-    print_type function used to print custom types.\
-    Single person smoothing classes: hysterisis stabilizer, switching on constant high confidence.\
-    Memory management, move semantics, and efficient vector usage.\
-    Multi-threaded architecuture.
+- Build system: CMake\
+- Implementation details: 
+   * Custom anti-copy queue,\
+   * print_type function used to print custom types.\
+   * Single person smoothing classes: hysterisis stabilizer, switching on constant high confidence.\
+   * Memory management, move semantics, and efficient vector usage.\
+   * Multi-threaded architecuture.
 
 ### Model Details
 Avaiable models:
@@ -80,7 +80,7 @@ Data;
     [ColorJitter; brightness=0.2, contrast=0.3]\
     [RandomHorizontal flip; p=0.3]\
     [RandomErasiing; p=0.3, value='random']\
-    [Tensors were normalized first to range [0,1] then to [-1,1]
+    [Tensors were normalized first to range [0,1] then to [-1,1]]
 - Weighted class sampler to balance less represented classes like disgust and mitigate bias.
 - Batch size: 64
 
