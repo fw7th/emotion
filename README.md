@@ -76,11 +76,11 @@ Models trained to detect 7 emotions:\
 **Data**;
 - Dataset: FER2013 + Raf-db [~59k training images]  [~10k test images]  [~12k val images].
 - Augmentations:
-    > GrayScaling
-    > ColorJitter; brightness=0.2, contrast=0.3]
-    > RandomHorizontal flip; p=0.3
-    > RandomErasiing; p=0.3, value='0.0'
-    > Tensors were normalized first to range [0,1] then to [-1,1]
+    > GrayScaling\
+    > ColorJitter; brightness=0.2, contrast=0.3]\
+    > RandomHorizontal flip; p=0.3\
+    > RandomErasiing; p=0.3, value='0.0'\
+    > Tensors were normalized first to range [0,1] then to [-1,1]\
 - Weighted class sampler to balance less represented classes like disgust and mitigate bias.
 - Batch size: 64
 
