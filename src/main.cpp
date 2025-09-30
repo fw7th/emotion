@@ -22,8 +22,8 @@ int main(int argc, char* argv[]) {
   std::string bin_ultra = "../../data/version-slim/slim_320.bin";
   std::string param_ultra = "../../data/version-slim/slim_320.param";
 
-  std::string bin_emo = "../../data/mobilenet-new/mobilenet_v2.bin";
-  std::string param_emo = "../../data/mobilenet-new/mobilenet_v2.param";
+  std::string bin_emo = "../../data/mobilenet-v2/mobilenet_v2.bin";
+  std::string param_emo = "../../data/mobilenet-v2/mobilenet_v2.param";
 
   std::variant<int, std::string> source;
 
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
   } catch (...) {
     source = input;
   }
-  std::cout << "Processing webcam with ID " << input << "as input.\n";
+  std::cout << "Processing webcam with ID " << input << " as input.\n";
 
   ts::TSQueue<std::unique_ptr<FrameInfo>> reader_queue;
   ts::TSQueue<std::unique_ptr<FrameInfo>> detect_queue;

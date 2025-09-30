@@ -168,12 +168,12 @@ std::pair<int, float> Emotion::predict(cv::Mat& frame) {
 
 cv::Mat Emotion::roiCrop(float x1, float y1, float x2, float y2,
                          cv::Mat& frame) {
-  float width = (x2 - x1) + 10;
-  float height = (y2 - y1) + 10;
+  float width = (x2 - x1);
+  float height = (y2 - y1);
 
   // Clamp to frame boundaries to prevent out-of-bounds access
-  int roi_x = std::max(0, (int)(x1 - 10));
-  int roi_y = std::max(0, (int)(y1 - 10));
+  int roi_x = std::max(0, (int)(x1));
+  int roi_y = std::max(0, (int)(y1));
   int roi_w = std::min((int)width, frame.cols - roi_x);
   int roi_h = std::min((int)height, frame.rows - roi_y);
 

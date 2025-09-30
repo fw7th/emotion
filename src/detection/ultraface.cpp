@@ -6,12 +6,15 @@
 //  Copyright © 2019 vealocia. All rights reserved.
 //
 
-// Portions adapted from Ultra-Light-Fast-Generic-Face-Detector-1MB by Linzaer (MIT License).
+// Portions adapted from Ultra-Light-Fast-Generic-Face-Detector-1MB by Linzaer
+// (MIT License).
 
 #define clip(x, y) (x < 0 ? 0 : (x > y ? y : x))
 
 #include "ultraface.h"
 
+#include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
 #include <thread>
@@ -87,11 +90,16 @@ UltraFace::UltraFace(ts::TSQueue<std::unique_ptr<FrameInfo>>& input_queue_,
 UltraFace::~UltraFace() { ultraface.clear(); }
 
 void UltraFace::infer() {
+  int frame_count = 0;
+  float frame_time = 0;
+
   // Pre-allocate containers for better performance
   std::vector<FaceInfo> face_info;
   face_info.reserve(10);
 
   while (true) {
+    auto loop_start = std::chrono::steady_clock::now();
+
     // Get frame from input queue
     if (input_queue.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -122,7 +130,13 @@ void UltraFace::infer() {
 
     // Perform face detection
     face_info.clear();
+    // Time face detection
+    auto detect_start = std::chrono::steady_clock::now();
     detect(inmat, face_info);
+    auto detect_end = std::chrono::steady_clock::now();
+    auto detect_time =
+        std::chrono::duration_cast<std::chrono::duration<double>>(detect_end -
+                                                                  detect_start);
 
     if (face_info.empty()) {
       continue;
@@ -138,6 +152,36 @@ void UltraFace::infer() {
     }
 
     output_queue.push(reader_ptr);
+
+    // Calculate total loop time
+    auto loop_end = std::chrono::steady_clock::now();
+    auto loop_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+        loop_end - loop_start);
+
+    // FPS calculation
+    frame_time += loop_time.count() * 1000;
+    frame_count++;
+
+    // Print detailed timing every 30 frames
+    if (frame_count % 30 == 0) {
+      std::cout << "================================\n";
+      std::cout << "+++ FACE DETECTOR +++\n";
+      std::cout << "[TIMING] Face Detection: " << std::fixed
+                << std::setprecision(2) << detect_time.count() * 1000
+                << " ms\n";
+
+      float avg_processing_time = frame_time / 30;
+      float fps = 1 / (avg_processing_time / 1000);
+      std::cout << "[TIMING] Average Frame Processing: " << std::fixed
+                << std::setprecision(2) << avg_processing_time << " ms\n";
+      std::cout << "[TIMING] FPS: " << std::fixed << std::setprecision(2) << fps
+                << " fps\n";
+      std::cout << "[TIMING] Faces Detected: " << face_info.size() << "\n";
+
+      std::cout << "================================\n";
+      frame_time = 0;
+      frame_count = 0;
+    }
   }
 }
 
