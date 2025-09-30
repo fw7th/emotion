@@ -36,8 +36,8 @@ cmake .. && make -j4
 ```mermaid
 graph LR
     A[Camera Input] --> B[Reader Thread<br/>Frame Skip: Every 3rd]
-    B --> C[Face Detection Thread<br/>UltraFace NCNN<br/>150 FPS]
-    C --> D[Emotion Thread<br/>ROI Crop + Classify<br/>65 FPS]
+    B --> C[Face Detection Thread<br/>UltraFace NCNN<br/>150+ FPS]
+    C --> D[Emotion Thread<br/>ROI Crop + Classify<br/>60+ FPS]
     D --> E[Display Thread<br/>Bounding Boxes + Labels<br/>600+ FPS]
     
     B -.-> F[Queue 1]
@@ -67,13 +67,13 @@ Only change made to model architectures was in conv1 to allow grayscale inputs.\
 Metrics are relayed in benchmarking details.<br>
 
 The model was fine-tuned on a mix of raf-db and fer2013 in a two phases; \
-Phase 1; FC only with requires_grad = True.\
-Phase 2: Full conv layer backbone unfrozen.
+  + Phase 1; FC only with requires_grad = True.
+  + Phase 2: Full conv layer backbone unfrozen.
 
-Models were allowed to train for as many epochs as possible till val loss plateaued and early stopping triggered.\
-Pytorch's ReduceLROnPlateau as our LR annealing strategy.\
-Models trained to detect 7 emotions:\
-    [angry, disgust, fear, happy, neutral, sad, surprise]
+- Models were allowed to train for as many epochs as possible till val loss plateaued and early stopping triggered.
+- Pytorch's ReduceLROnPlateau as our LR annealing strategy.
+- Models trained to detect 7 emotions:
+    > [angry, disgust, fear, happy, neutral, sad, surprise]
 
 **Data**;
 - Dataset: FER2013 + Raf-db [~59k training images]  [~10k test images]  [~12k val images].
