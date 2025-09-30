@@ -48,13 +48,13 @@ graph LR
 
 ## Technical Details
 ### Pipeline
-Build system: CMake
+Build system: CMake\
 Implementation details: 
     Custom anti-copy queue,\
     print_type function used to print custom types.\
     Single person smoothing classes: hysterisis stabilizer, switching on constant high confidence.\
     Memory management, move semantics, and efficient vector usage.\
-    Multi-threaded architecuture.\
+    Multi-threaded architecuture.
 
 ### Model Details
 Avaiable models:
@@ -66,7 +66,7 @@ Metrics are relayed in benchmarking details.<br>
 
 The model was fine-tuned on a mix of raf-db and fer2013 in a two phases; \
 Phase 1; FC only with requires_grad = True.\
-Phase 2: Full conv layer backbone unfrozen.\
+Phase 2: Full conv layer backbone unfrozen.
 
 Models were allowed to train for as many epochs as possible till val loss plateaued and early stopping triggered.\
 Pytorch's ReduceLROnPlateau as our LR annealing strategy.\
@@ -80,14 +80,14 @@ Data;
     [ColorJitter; brightness=0.2, contrast=0.3]\
     [RandomHorizontal flip; p=0.3]\
     [RandomErasiing; p=0.3, value='random']\
-    [Tensors were normalized first to range [0,1] then to [-1,1]\
+    [Tensors were normalized first to range [0,1] then to [-1,1]
 - Weighted class sampler to balance less represented classes like disgust and mitigate bias.
 - Batch size: 64
 
 Training;
 - Optimizer: 
     First phase: Adam(lr=1e-3, default values for other hyper params)\
-    Second phase: Adam (lr=1e-5, default vals)\
+    Second phase: Adam (lr=1e-5, default vals)
 - Norm-based gradient clipping.
 - Scheduler patience: 2
 - Early stopping patience: 8
