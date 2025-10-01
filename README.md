@@ -2,7 +2,7 @@
 *High-performance emotion recognition pipeline achieving 90+ FPS on CPU*.\
 Motivation was a low power option for retail analysis.
 
-**Still working on it**/
+**Still working on it** /
 [Demo GIF here]
 
 ## Performance
@@ -84,11 +84,11 @@ graph LR
 Available models:
 - **MobileNetv2 pretrained w/ IMAGENET-V2 weights** finetuned for the classification task (lower accuracy, but much faster processing speeds per frame).
   
-- **EfficientNet-lite0 pretrained w/ IMAGENET-V2 weights**, finetuned. (planned)
+- **EfficientNet-lite0 pretrained w/ IMAGENET-V2 weights**, finetuned (planned).\
 Only change made to model architectures was in conv1 to allow grayscale inputs.\
 Metrics are relayed in benchmarking details.<br>
 
-The model was fine-tuned on a mix of raf-db and fer2013 in two phases; \
+The model was fine-tuned on a mix of raf-db and fer2013 in two phases;\
   + Phase 1; FC only with requires_grad = True.
   + Phase 2: Full conv layer backbone unfrozen.
 
@@ -104,7 +104,7 @@ The model was fine-tuned on a mix of raf-db and fer2013 in two phases; \
     > ColorJitter; brightness=0.2, contrast=0.3\
     > RandomHorizontal flip; p=0.3\
     > RandomErasing; p=0.3, value='0.0'\
-    > Tensors were normalized first to range [0,1] then to [-1,1]\
+    > Tensors were normalized first to range [0,1] then to [-1,1]
 - Weighted class sampler to balance less represented classes like disgust and mitigate bias.
 - Batch size: 192
 
