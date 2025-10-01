@@ -15,7 +15,7 @@ class ConfidenceStabilizer {
   };
 
   std::deque<EmotionScore> history;
-  float confidence_threshold = 0.7f;
+  float confidence_threshold = 0.6f;
 
  public:
   std::string stabilize(const std::string& emotion, float confidence) {
@@ -25,7 +25,7 @@ class ConfidenceStabilizer {
     history.push_back({emotion, confidence, now});
 
     // Remove old entries (e.g., older than 2 seconds)
-    auto cutoff = now - std::chrono::milliseconds(2000);
+    auto cutoff = now - std::chrono::milliseconds(1500);
     while (!history.empty() && history.front().timestamp < cutoff) {
       history.pop_front();
     }
@@ -57,7 +57,7 @@ class HysteresisStabilizer {
   std::string current_stable_emotion = "";
   std::string candidate_emotion = "";
   int candidate_count = 0;
-  int confirmation_frames = 5;  // Need 5 consistent frames to switch
+  int confirmation_frames = 3;  // Need 3 consistent frames to switch
 
  public:
   std::string stabilize(const std::string& detected_emotion) {
@@ -107,6 +107,7 @@ class RobustEmotionStabilizer {
   }
 };
 
+// To be implemented later.
 struct Person {
     int id;
     cv::Rect bbox;

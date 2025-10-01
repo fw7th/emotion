@@ -1,4 +1,5 @@
 #include "display.h"
+#include "smoothing.h"
 
 #include <chrono>
 #include <iomanip>
@@ -43,6 +44,7 @@ void Display::textBox(cv::Mat& frame, const cv::Point pt,
 void Display::display() {
   int frame_count = 0;
   float frame_time = 0;
+  RobustEmotionStabilizer stabilizer;  // define prediction smoother
 
   // Create display window
   cv::namedWindow("Display", cv::WINDOW_NORMAL);
@@ -73,10 +75,13 @@ void Display::display() {
     // Draw bounding boxes and emotion labels
     const std::vector<Bbox>& boxes = emotion_ptr->bboxes;
     const std::vector<std::string>& emotions = emotion_ptr->predictions;
+    const std::vector<float>& conf = emotion_ptr->confidences;
 
     for (size_t i = 0; i < boxes.size() && i < emotions.size(); i++) {
+      std::string emotion = stabilizer.stabilize(emotions[i], conf[i]);
+
       // Draw emotion label with background
-      textBox(frame, boxes[i].pt1, emotions[i]);
+      textBox(frame, boxes[i].pt1, emotion);
 
       // Draw bounding box
       cv::rectangle(frame, boxes[i].pt1, boxes[i].pt2, cv::Scalar(150, 255, 0),

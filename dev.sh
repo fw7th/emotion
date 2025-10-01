@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define your workspace container
-CONTAINER_NAME=cpp-env
-IMAGE_NAME=cpp-dev:git
+CONTAINER_NAME=lowtier-iot
+IMAGE_NAME=lowtier-iot:latest
 MOUNT_PATH=$(pwd)
 
 # Allow local Docker containers to access the host X server

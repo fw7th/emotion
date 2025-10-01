@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "mat.h"
-#include "smoothing.h"
 
 Emotion::Emotion(ts::TSQueue<std::unique_ptr<FrameInfo>>& input_queue_,
                  ts::TSQueue<std::unique_ptr<FrameInfo>>& output_queue_,
@@ -149,7 +148,7 @@ std::pair<int, float> Emotion::predict(cv::Mat& frame) {
 
   // Convert to NCNN format and normalize
   ncnn::Mat inmat = ncnn::Mat::from_pixels_resize(
-      frame.data, ncnn::Mat::PIXEL_GRAY, w, h, 64, 64);
+      frame.data, ncnn::Mat::PIXEL_GRAY, w, h, FRAME_SIZE, FRAME_SIZE);
   float mean[1] = {127.5f};
   float norm[1] = {1 / 127.5f};
   inmat.substract_mean_normalize(mean, norm);

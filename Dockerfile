@@ -1,19 +1,23 @@
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 # Set environment variables to avoid some tzdata prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system packages
+# Install deps
 RUN apt-get update && apt-get install -y \
     build-essential \
+    time \
+    htop \
+    procps \
+    sysstat \
     cmake \
-    git \
-    wget \
-    unzip \
     pkg-config \
     libopencv-dev \
-    libeigen3-dev \
+    nano \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app directory inside container
-WORKDIR /app
+# Set workdir
+WORKDIR /workspace
+
+# Copy project source into container
+COPY . /workspace

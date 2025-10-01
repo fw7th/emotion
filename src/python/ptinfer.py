@@ -49,7 +49,7 @@ def saveScript(img_path):
     # model = createModel()
     model = createLite()
 
-    weights_path = "/home/fw7th/emotion/data/efficientlite/lite.pth"
+    weights_path = "/home/fw7th/emotion/data/efficientnet/efficientlite0.pth"
     state_dict = torch.load(weights_path, map_location=torch.device("cpu"))
 
     model.load_state_dict(state_dict, strict=False)
@@ -71,7 +71,7 @@ def saveScript(img_path):
         [
             transforms.Grayscale(num_output_channels=1),
             transforms.Resize(
-                (112, 112), interpolation=transforms.InterpolationMode.BICUBIC
+                (64, 64), interpolation=transforms.InterpolationMode.BICUBIC
             ),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5], std=[0.5]),
@@ -97,11 +97,11 @@ def saveScript(img_path):
     print(f"Prediction: {emotion_dict[pred]}\n")
     print(f"Time taken for inference: {inference_time:.4f} seconds")
 
-    dummy_input = torch.randn(1, 1, 112, 112)
+    dummy_input = torch.randn(1, 1, 64, 64)
     traced_model = torch.jit.trace(model, dummy_input)
 
     # Save TorchScript model
-    traced_model.save("/home/fw7th/emotion/data/efficientlite/lite.pt")
+    traced_model.save("/home/fw7th/emotion/data/efficientnet/lite.pt")
 
 
-saveScript("/home/fw7th/isolation/data/disgust1.jpg")
+saveScript("/home/fw7th/isolation/data/ang2.jpg")
