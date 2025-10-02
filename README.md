@@ -86,10 +86,11 @@ Available models:
 - **MobileNetv2 (IMAGENET-V2 pretrained)** finetuned for task - 79.3% accuracy, 9.1ms inference
 - **EfficientNet-lite0** (planned - experimental results showed accuracy/speed tradeoff not favorable)
 <br>
-Only change made to model architectures was in conv1 to allow grayscale inputs.\
+Only change made to model architectures was in conv1 to allow grayscale inputs.
+
 Metrics are relayed in benchmarking details.<br>
 
-The model was fine-tuned on a mix of raf-db and fer2013 in two phases;\
+The model was fine-tuned on a mix of raf-db and fer2013 in two phases;
   + Phase 1; All layers unfrozen, high lr
   + Phase 2: Same but with a lower lr
 

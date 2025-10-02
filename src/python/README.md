@@ -11,10 +11,10 @@ scikit_learn==1.7.2\
 seaborn==0.13.2\
 thop==0.1.1.post2209072238\
 torchvision==0.23.0+cu126\
-tqdm==4.67.1\
+tqdm==4.67.1
 
 ## Training Process
-Two-stage training with learning rate annealing:\
+Two-stage training with learning rate annealing:
 
 **Stage 1:** Full model training
 - Learning rate: 1e-3
@@ -35,27 +35,22 @@ Initial experiments trained on RAF-DB (controlled studio conditions) and tested 
 Train, test and val sets were combined per class.\
 <br>
 - RAF-DB: (~35k images)
-[
-fear: 5103 images\
-neutral: 4902 images\
-happy: 5023 images\
-angry: 4550 images\
-sad: 4994 images\
-surprise: 5231 images\
-disgust: 4857 images\
-]
+    fear: 5103 images\
+    neutral: 4902 images\
+    happy: 5023 images\
+    angry: 4550 images\
+    sad: 4994 images\
+    surprise: 5231 images\
+    disgust: 4857 images
 
 - FER2013: (~34k images)
-[
-fear: 4724 images\
-neutral: 6053 images\
-happy: 8733 images\
-angry: 4529 images\
-sad: 5581 images\
-surprise: 3833 images\
-disgust: 483 images\
-]
-
+    fear: 4724 images\
+    neutral: 6053 images\
+    happy: 8733 images\
+    angry: 4529 images\
+    sad: 5581 images\
+    surprise: 3833 images\
+    disgust: 483 images
 
 ### Ablation Results
 | Approach                                 | Val Accuracy |
@@ -72,26 +67,22 @@ disgust: 483 images\
 > The split is 70% train, 15% test and val each, the splits were not weighted to contain one dataset over another, but a random contribution from each dataset.
 
 + Train split: 
-[
-fear: 6879 images\
-neutral: 7669 images\
-happy: 9630 images\
-angry: 6356 images\
-sad: 7403 images\
-surprise: 6345 images\
-disgust: 3738 images\
-]
+    fear: 6879 images\
+    neutral: 7669 images\
+    happy: 9630 images\
+    angry: 6356 images\
+    sad: 7403 images\
+    surprise: 6345 images\
+    disgust: 3738 images
 
 + Test & Val split (same):
-[
-fear: 1474 images\
-neutral: 1643 images\
-happy: 2063 images\
-angry: 1361 images\
-sad: 1586 images\
-surprise: 1359 images\
-disgust: 801 images\
-]
+    fear: 1474 images\
+    neutral: 1643 images\
+    happy: 2063 images\
+    angry: 1361 images\
+    sad: 1586 images\
+    surprise: 1359 images\
+    disgust: 801 images
 
 - Class balancing strategy:
 Two class balancing strategies are deployed;
@@ -116,5 +107,3 @@ See main README for training hyperparameters
 ![Training & Validation Loss](../../assets/loss_curves.png)
 
 *Training dynamics show typical convergence behavior. Spike at epoch ~15 indicates learning rate reduction by ReduceLROnPlateau scheduler. Final model selected based on best validation performance (epoch 16), not final epoch.*
-
-
