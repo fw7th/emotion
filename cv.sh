@@ -1,3 +1,5 @@
+# Script runs c++ files without full expliciting paths
+
 #!/bin/bash
 
 # Check if a file was passed

@@ -5,12 +5,14 @@
 #include <string>
 #include <vector>
 
+// Defines face bbox positions
 struct Bbox {
   cv::Point pt1;
   cv::Point pt2;
 
 };
 
+// Info from one frame to be passed with a smart pointer
 struct FrameInfo {
   cv::Mat frame;
   std::vector<Bbox> bboxes;

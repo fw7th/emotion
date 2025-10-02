@@ -1,3 +1,5 @@
+# Simulates a low-tier IoT device
+
 docker run -it --rm \
   --cpus="1.0" \
   -m 512m \

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <typeinfo>
 
+// Prints type of objects
 template <typename T> void print_type(const T &obj) {
   int status;
   const char *name = typeid(obj).name();

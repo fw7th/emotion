@@ -2,7 +2,6 @@
 *High-performance emotion recognition pipeline achieving 90+ FPS on CPU*.\
 Motivation was a low power option for retail analysis.
 
-**Still working on it** /
 [Demo GIF here]
 
 ## Performance
@@ -34,17 +33,19 @@ The pipeline sustains ~90 FPS end-to-end with <10% CPU usage and ~50 MB RAM on a
 - Docker constraints were applied explicitly (`--cpus=1 --memory=512m --blkio-weight=100`) to simulate an IoT node.  
 - All numbers are averages across 5 runs. Reproducibility can be verified by running the included benchmarking scripts under the same flags.
 
+![IoT docker status dump](assets/iot.png)
+
 ## Quick Start
 ### Install dependencies
 ```bash
 sudo apt install opencv-dev cmake
 ```
+- Optionally, you could create an image from the provided `Dockerfile`.
 
 ### Clone and build
 ```bash
-git clone https://github.com/fw7th/emotion
+git clone https://github.com/fw7th/emotion.git
 cd src
-./setup.sh
 mkdir build && cd build
 cmake .. && make -j$(nproc)
 ```
@@ -82,15 +83,17 @@ graph LR
 
 ### Model Details
 Available models:
-- **MobileNetv2 pretrained w/ IMAGENET-V2 weights** finetuned for the classification task (lower accuracy, but much faster processing speeds per frame).
-  
-- **EfficientNet-lite0 pretrained w/ IMAGENET-V2 weights**, finetuned (planned).\
+- **MobileNetv2 (IMAGENET-V2 pretrained)** finetuned for task - 79.3% accuracy, 9.1ms inference
+- **EfficientNet-lite0** (planned - experimental results showed accuracy/speed tradeoff not favorable)
+<br>
 Only change made to model architectures was in conv1 to allow grayscale inputs.\
 Metrics are relayed in benchmarking details.<br>
 
 The model was fine-tuned on a mix of raf-db and fer2013 in two phases;\
-  + Phase 1; FC only with requires_grad = True.
-  + Phase 2: Full conv layer backbone unfrozen.
+  + Phase 1; All layers unfrozen, high lr
+  + Phase 2: Same but with a lower lr
+
+- While this may seem unorthodox, this produced the best results from rigorous tests.
 
 - Models were allowed to train for as many epochs as possible till val loss plateaued and early stopping triggered.
 - Pytorch's ReduceLROnPlateau as our LR annealing strategy.
@@ -98,26 +101,35 @@ The model was fine-tuned on a mix of raf-db and fer2013 in two phases;\
     > [angry, disgust, fear, happy, neutral, sad, surprise]
 
 **Data**;
-- Dataset: FER2013 + Raf-db [~48k training images]  [~10k test images]  [~10k val images].
+- Dataset: FER2013 + RAF-DB [~48k training images]  [~10k test images]  [~10k val images].
 - Augmentations:
     > GrayScaling\
+    > Image resizing (64x64)
     > ColorJitter; brightness=0.2, contrast=0.3\
     > RandomHorizontal flip; p=0.3\
     > RandomErasing; p=0.3, value='0.0'\
     > Tensors were normalized first to range [0,1] then to [-1,1]
 - Weighted class sampler to balance less represented classes like disgust and mitigate bias.
 - Batch size: 192
+- Data loader num_workers: 4
 
 **Training**;
+- Loss Function: CrossEntropyLoss
 - Optimizer: 
-    + First phase: Adam(lr=1e-3, default values for other hyper params)\
-    + Second phase: Adam (lr=1e-5, default vals)
-- Norm-based gradient clipping.
+    + First phase: AdamW(lr=1e-3,
+                        weight_decay=1e-2,
+                        betas=(0.9, 0.999),
+                        eps=1e-8,
+                        amsgrad=True
+    )
+    + Second phase: AdamW(lr=1e-5, same as above for the rest)
+- Norm-based gradient clipping; grad_clip_norm=1.0
+- Allowed epochs: 100
 - Scheduler patience: 3
+- Scheduler factor: 0.5
 - Early stopping patience: 8
 
-**Working on it**\
-For nerds; more information about training and model performance available in `python/README.md`.
+**For nerds;** more information about training and model performance available in `src/python/README.md`.
 
 Cleaned datasets available @: [https://drive.google.com/file/d/1kDnWsOLdptVEOWoFhfFTSmv7sU0vP_bM/view?usp=drive_link]
 
@@ -125,7 +137,33 @@ Cleaned datasets available @: [https://drive.google.com/file/d/1kDnWsOLdptVEOWoF
 Benchmarks were averaged over 5 runs.\
 **Device note:** Reader module is capped at webcam framerate (30 fps on test device).  
 
-### Model 1 — MobileNetV2
+### Model Accuracy (Validation Set - 10k images)
+
+| Model                 | Dataset            | Accuracy | Weighted F1  | Inference Time | Memory |
+|-----------------------|--------------------|----------|--------------|----------------|--------|
+| MobileNetV2           | FER2013 + RAF-DB   | 79.3%    | 0.793        | 9.1ms          | 50MB   |
+| FER2013 SOTA (ResNet) | FER2013            | ~73%     | -            | ~50ms          | ~500MB |
+| RAF-DB SOTA           | RAF-DB             | ~88-90%  | -            | -              | -      |
+| Baseline (random)     | -                  | 14.3%    | -            | -              | -      |
+
+### Per-Class Performance (MobileNetV2)
+
+     | Emotion          | Precision  | Recall    | F1-Score  | Support   |
+-----|------------------|------------|-----------|-----------|-----------|
+  0  | Angry            | 0.744      | 0.778     | 0.761     | 1361      | 
+  1  | Disgust          | 0.908      | 0.943     | 0.923     | 801       |
+  2  | Fear             | 0.777      | 0.737     | 0.756     | 1474      |
+  3  | Happy            | 0.888      | 0.852     | 0.870     | 2063      |
+  4  | Neutral          | 0.706      | 0.742     | 0.723     | 1643      |
+  5  | Sad              | 0.704      | 0.683     | 0.694     | 1586      |
+  6  | Surprise         | 0.860      | 0.878     | 0.869     | 1359      |
+     | **Macro Avg**    | **0.798**  | **0.802** | **0.800** | **10287** |
+     | **Weighted Avg** | **0.793**  | **0.793** | **0.793** | **10287** |
+
+![Confusion Matrix](assets/confusion_matrix.png)
+
+### Speed Benchmarks
+#### Model 1 — MobileNetV2
 | Module            | Metric                 | Avg Value      | Notes |
 |-------------------|------------------------|----------------|-------|
 | **Reader**        | Frame Rate             | 30 fps (cap)   | Limited by webcam, not algorithm |

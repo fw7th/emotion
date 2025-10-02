@@ -19,7 +19,7 @@ class PathConfig:
         else:
             self.root = Path.cwd()
             self.project = Path.cwd()
-            self.data = Path("./data")
+            self.data = Path(os.path.abspath("../data"))
             self.cache = Path("./cache")
 
     def ensure_dirs(self):

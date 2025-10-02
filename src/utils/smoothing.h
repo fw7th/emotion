@@ -21,29 +21,27 @@ class ConfidenceStabilizer {
   std::string stabilize(const std::string& emotion, float confidence) {
     auto now = std::chrono::steady_clock::now();
 
-    // Add current detection
+    // Add detection
     history.push_back({emotion, confidence, now});
 
-    // Remove old entries (e.g., older than 2 seconds)
+    // Remove stale entries
     auto cutoff = now - std::chrono::milliseconds(1500);
     while (!history.empty() && history.front().timestamp < cutoff) {
       history.pop_front();
     }
 
-    // Weight by confidence and recency
     std::map<std::string, float> weighted_scores;
 
-    // Recent emotions with high confidence get highest scores
+    // Weight by confidence × recency
     for (const auto& entry : history) {
       auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         now - entry.timestamp)
                         .count();
-      float time_weight = std::exp(-age_ms / 1000.0f);  // Exponential decay
-
+      float time_weight = std::exp(-age_ms / 1000.0f);
       weighted_scores[entry.emotion] += entry.confidence * time_weight;
     }
 
-    // Return highest weighted emotion
+    // Return max score
     return std::max_element(
                weighted_scores.begin(), weighted_scores.end(),
                [](const auto& a, const auto& b) { return a.second < b.second; })
@@ -52,12 +50,11 @@ class ConfidenceStabilizer {
 };
 
 class HysteresisStabilizer {
-  // Stabilizes detected emotion to suppress fast switching
  private:
   std::string current_stable_emotion = "";
   std::string candidate_emotion = "";
   int candidate_count = 0;
-  int confirmation_frames = 3;  // Need 3 consistent frames to switch
+  int confirmation_frames = 3;
 
  public:
   std::string stabilize(const std::string& detected_emotion) {
@@ -67,7 +64,6 @@ class HysteresisStabilizer {
     }
 
     if (detected_emotion == current_stable_emotion) {
-      // Reset candidate if we're back to current emotion
       candidate_emotion = "";
       candidate_count = 0;
       return current_stable_emotion;
@@ -76,13 +72,11 @@ class HysteresisStabilizer {
     if (detected_emotion == candidate_emotion) {
       candidate_count++;
       if (candidate_count >= confirmation_frames) {
-        // Switch to new emotion
         current_stable_emotion = candidate_emotion;
         candidate_emotion = "";
         candidate_count = 0;
       }
     } else {
-      // New candidate
       candidate_emotion = detected_emotion;
       candidate_count = 1;
     }
@@ -98,16 +92,12 @@ class RobustEmotionStabilizer {
 
  public:
   std::string stabilize(const std::string& emotion, float confidence) {
-    // First apply confidence-based smoothing
     std::string confidence_result =
         confidence_stabilizer.stabilize(emotion, confidence);
-
-    // Then apply hysteresis to prevent rapid switching
     return hysteresis_stabilizer.stabilize(confidence_result);
   }
 };
 
-// To be implemented later.
 struct Person {
     int id;
     cv::Rect bbox;
@@ -121,8 +111,8 @@ private:
     std::map<int, ConfidenceStabilizer> person_stabilizers;
     std::vector<Person> tracked_people;
     int next_person_id = 0;
-    int max_frames_missing = 30;  // Remove person after 30 frames
-    float iou_threshold = 0.5f;   // For bbox matching
+    int max_frames_missing = 30;
+    float iou_threshold = 0.5f;
     
     float calculateIoU(const cv::Rect& a, const cv::Rect& b) {
         int x1 = std::max(a.x, b.x);
@@ -143,19 +133,18 @@ public:
                                const std::vector<std::string>& emotions,
                                const std::vector<float>& confidences) {
         
-        // Mark all people as potentially missing
+        // Increment missing counters
         for (auto& person : tracked_people) {
             person.frames_since_seen++;
         }
         
-        // Match detections to existing people
         std::vector<bool> detection_matched(bboxes.size(), false);
         
+        // Match detections
         for (size_t i = 0; i < bboxes.size(); i++) {
             int best_match_id = -1;
             float best_iou = 0.0f;
             
-            // Find best matching existing person
             for (auto& person : tracked_people) {
                 if (person.frames_since_seen < max_frames_missing) {
                     float iou = calculateIoU(bboxes[i], person.bbox);
@@ -167,7 +156,6 @@ public:
             }
             
             if (best_match_id != -1) {
-                // Update existing person
                 auto it = std::find_if(tracked_people.begin(), tracked_people.end(),
                     [best_match_id](const Person& p) { return p.id == best_match_id; });
                 
@@ -179,13 +167,13 @@ public:
             }
         }
         
-        // Add new people for unmatched detections
+        // Add new people
         for (size_t i = 0; i < bboxes.size(); i++) {
             if (!detection_matched[i]) {
                 Person new_person;
                 new_person.id = next_person_id++;
                 new_person.bbox = bboxes[i];
-                new_person.emotion = emotions[i];  // Start with raw detection
+                new_person.emotion = emotions[i];
                 new_person.confidence = confidences[i];
                 new_person.frames_since_seen = 0;
                 
@@ -194,7 +182,7 @@ public:
             }
         }
         
-        // Remove people who haven't been seen for too long
+        // Remove inactive people
         tracked_people.erase(
             std::remove_if(tracked_people.begin(), tracked_people.end(),
                 [this](const Person& p) {

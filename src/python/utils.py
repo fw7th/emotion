@@ -8,8 +8,19 @@ import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 # Implementing an early stopping class based on val loss
 class EarlyStopping:
+    """
+    Custom early stopping class based on validation score difference per epoch.
+    Saves the best model weights based on validation loss.
+
+    args:
+        patience (int): How long to hold out till breaking loop ends.
+        delta (float): Tolerable difference btw val loss to increment patience by 1.
+        path (string): Path to save best model weights:
+    """
+
     def __init__(self, patience=5, delta=0.0, path="checkpoint.pt"):
         self.patience = patience
         self.delta = delta
@@ -42,6 +53,10 @@ class EarlyStopping:
 
 
 class MetaOptimizer:
+    """
+    Layer wise learning rate annealing function.
+    """
+
     def __init__(
         self, model, base_lr=1e-3, decay_factor=0.9, optimizer_class=torch.optim.Adam
     ):
@@ -185,7 +200,13 @@ def checkDataLoading(train_loader, val_loader):
     return True
 
 
-def evalModel(model, test_loader):
+def evalModel(model, test_loader, effective_base):
+    """
+    Evaluate models using the test loader, returns accuracy, classification report, FLOPs, trainable params, confusion matrix in fine print.
+
+    args:
+        effective_base (str): Directory to save the classification report png to.
+    """
     y_true = []  # ground truth labels
     y_pred = []  # predicted labels
 
@@ -226,6 +247,6 @@ def evalModel(model, test_loader):
     plt.title("Confusion Matrix")
 
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
-    # plt.savefig(f"{effective_base}/confusion_matrix_mobilenet.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{effective_base}/confusion_matrix_mobilenet.png", dpi=300, bbox_inches='tight')
     plt.show()
     plt.close(fig)

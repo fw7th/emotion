@@ -7,7 +7,7 @@
 #include <queue>
 #include <utility>
 
-// Thread-safe queue template
+// Thread-safe anti-copy queue
 namespace ts {
 template <typename T> class TSQueue {
 private:

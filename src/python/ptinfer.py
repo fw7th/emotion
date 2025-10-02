@@ -1,55 +1,14 @@
 import torch
-import timm
-from timm.layers import Conv2dSame, SelectAdaptivePool2d
-import torch.nn as nn
-from torchvision import transforms, models
+from torchvision import transforms
 from PIL import Image
 import time
-
-
-def createModel():
-    """Create model optimized for grayscale emotion recognition"""
-    model = models.mobilenet_v2(weights=None)
-
-    # Modify first conv layer for single-channel grayscale input
-    model.features[0][0] = nn.Conv2d(
-        1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
-    )
-
-    model.classifier[1] = nn.Linear(in_features=1280, out_features=7, bias=True)
-
-    for param in model.parameters():
-        param.requires_grad = False
-
-    return model
-
-
-def createLite():
-    model = timm.create_model("efficientnet_lite0", pretrained=False)
-
-    # Modify first conv layer for single-channel grayscale inputs
-    old_conv = model.conv_stem
-    model.conv_stem = Conv2dSame(
-        in_channels=1,
-        out_channels=old_conv.out_channels,
-        kernel_size=old_conv.kernel_size,
-        stride=old_conv.stride,
-        bias=(old_conv.bias is not None),
-    )
-
-    model.classifier = nn.Linear(in_features=1280, out_features=7, bias=True)
-
-    for param in model.parameters():
-        param.requires_grad = False
-
-    return model
+from src.python.model import createModel
 
 
 def saveScript(img_path):
-    # model = createModel()
-    model = createLite()
+    model = createModel()
 
-    weights_path = "/home/fw7th/emotion/data/efficientnet/efficientlite0.pth"
+    weights_path = "/home/fw7th/emotion/data/test/v2.pth"
     state_dict = torch.load(weights_path, map_location=torch.device("cpu"))
 
     model.load_state_dict(state_dict, strict=False)
@@ -101,7 +60,7 @@ def saveScript(img_path):
     traced_model = torch.jit.trace(model, dummy_input)
 
     # Save TorchScript model
-    traced_model.save("/home/fw7th/emotion/data/efficientnet/lite.pt")
+    traced_model.save("/home/fw7th/emotion/data/test/v2.pt")
 
 
-saveScript("/home/fw7th/isolation/data/ang2.jpg")
+saveScript("/home/fw7th/isolation/data/crop2.jpeg")
