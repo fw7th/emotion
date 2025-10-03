@@ -107,37 +107,12 @@ void Emotion::load() {
 }
 
 std::pair<std::string, float> Emotion::infer(cv::Mat& frame) {
-  static int loop_count = 0;
-  auto final_start = std::chrono::steady_clock::now();
-
   preprocess(frame);
 
-  auto predict_start = std::chrono::steady_clock::now();
   auto result = predict(bright_frame);
-  auto predict_end = std::chrono::steady_clock::now();
-
   int predicted_class = result.first;
   float confidence = result.second;
   std::string& prediction = emotions_[predicted_class];
-
-  // Timing calculations for performance monitoring
-  auto predict_time = std::chrono::duration_cast<std::chrono::duration<double>>(
-      predict_end - predict_start);
-  auto final_end = std::chrono::steady_clock::now();
-  auto final_time = std::chrono::duration_cast<std::chrono::duration<double>>(
-      final_end - final_start);
-
-  if (loop_count % 30 == 0) {
-    std::cout << "+++ Infer Method +++\n";
-    std::cout << "[SANITY] Predicted Class: " << prediction << "\n";
-    std::cout << "[SANITY] Prediction Confidence: " << confidence << "\n";
-    std::cout << "[TIMING] Prediction Function Time: " << std::fixed
-              << std::setprecision(2) << predict_time.count() * 1000 << " ms\n";
-    std::cout << "[TIMING] Full Prediction Time: " << std::fixed
-              << std::setprecision(2) << final_time.count() * 1000 << " ms\n";
-    std::cout << "================================\n";
-  }
-  loop_count++;
 
   return {prediction, confidence};
 }

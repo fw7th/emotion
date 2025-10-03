@@ -15,7 +15,7 @@ class ConfidenceStabilizer {
   };
 
   std::deque<EmotionScore> history;
-  float confidence_threshold = 0.6f;
+  float confidence_threshold = 0.7f;
 
  public:
   std::string stabilize(const std::string& emotion, float confidence) {
@@ -37,7 +37,7 @@ class ConfidenceStabilizer {
       auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         now - entry.timestamp)
                         .count();
-      float time_weight = std::exp(-age_ms / 1000.0f);
+      float time_weight = std::exp(-age_ms / 1700.0f);
       weighted_scores[entry.emotion] += entry.confidence * time_weight;
     }
 
