@@ -2,7 +2,9 @@
 *High-performance emotion recognition pipeline achieving 90+ FPS on CPU*.\
 Motivation was a low power option for retail analysis.
 
-![emotion GIF](assets/github.gif)
+<p align="center">
+  <img src="assets/github.gif" alt="Demo" width="480">
+</p>
 
 ## Performance
 - Face Detection: 150+ FPS

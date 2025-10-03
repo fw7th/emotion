@@ -34,7 +34,7 @@ Initial experiments trained on RAF-DB (controlled studio conditions) and tested 
 
 Train, test and val sets were combined per class.\
 <br>
-- RAF-DB: (~35k images)
+- RAF-DB: (~35k images)\
     fear: 5103 images\
     neutral: 4902 images\
     happy: 5023 images\
@@ -43,7 +43,7 @@ Train, test and val sets were combined per class.\
     surprise: 5231 images\
     disgust: 4857 images
 
-- FER2013: (~34k images)
+- FER2013: (~34k images)\
     fear: 4724 images\
     neutral: 6053 images\
     happy: 8733 images\
@@ -66,7 +66,7 @@ Train, test and val sets were combined per class.\
 - Train/Val/Test split methodology:
 > The split is 70% train, 15% test and val each, the splits were not weighted to contain one dataset over another, but a random contribution from each dataset.
 
-+ Train split: 
++ Train split:\
     fear: 6879 images\
     neutral: 7669 images\
     happy: 9630 images\
@@ -75,7 +75,7 @@ Train, test and val sets were combined per class.\
     surprise: 6345 images\
     disgust: 3738 images
 
-+ Test & Val split (same):
++ Test & Val split (same):\
     fear: 1474 images\
     neutral: 1643 images\
     happy: 2063 images\
