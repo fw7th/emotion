@@ -6,6 +6,13 @@ Motivation was a low power option for retail analysis.
   <img src="assets/github.gif" alt="Demo" width="480">
 </p>
 
+## Use Cases
+- Retail: Customer engagement analysis
+- Education: Student attention monitoring  
+- Healthcare: Patient mood tracking
+- Gaming: Adaptive difficulty based on player emotion
+- Content: Audience reaction analysis
+
 ## Performance
 - Face Detection: 150+ FPS
 - Emotion Classification: 90+ FPS  
@@ -36,6 +43,12 @@ The pipeline sustains ~90 FPS end-to-end with <10% CPU usage and ~50 MB RAM on a
 - All numbers are averages across 5 runs. Reproducibility can be verified by running the included benchmarking scripts under the same flags.
 
 ![IoT docker status dump](assets/iot.png)
+
+## Why 90 FPS on CPU?
+- No GPU required = lower hardware costs
+- Works on edge devices (Raspberry Pi, etc.)
+- Scalable to 100s of cameras without expensive servers
+- Deploy anywhere (even offline/remote locations)
 
 ## Quick Start
 ### Install dependencies
