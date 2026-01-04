@@ -1,0 +1,35 @@
+EMOTIONS V2
+- SORT tracking for N faces
+- Thread pool architecture
+- SIMD optimizations for preprocessing
+- Memory pools and object recycling
+- Real-time emotion smoothing per face ID
+- Gaze tracking
+- Blink rate
+
+Metrics to add:
+- Memory usage per frame
+- Queue depths (detect backlog)
+- Frame drops/skips
+- CPU temperature
+- Model accuracy over time (drift detection)
+
+Core CV Extensions:
+- Head pose estimation (pitch/yaw/roll from face landmarks)
+- Facial expression intensity scoring (not just category)
+- Micro-expression detection (sub-second emotion changes)
+- Attention/engagement scoring (combines gaze + blink + pose)
+
+System Architecture:
+- Configuration management (YAML/JSON for thresholds, model paths)
+- Plugin architecture (easy to add new face analysis modules)
+- Graceful degradation (fallback to simpler models under load)
+- Model hot-swapping (update models without restart)
+- Multi-camera support
+
+Edge-Specific Features:
+- Power consumption monitoring
+- Thermal throttling detection
+- Storage usage tracking (for offline mode)
+- Network connectivity status (for hybrid edge/cloud)
+- Model compression utilities (pruning, quantization tools)

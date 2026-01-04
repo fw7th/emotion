@@ -6,15 +6,15 @@
 #include <iostream>
 #include <thread>
 
-Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>>& input_queue_)
+Display::Display(ts::TSQueue<std::unique_ptr<FrameInfo>> &input_queue_)
     : input_queue(input_queue_) {
   std::cout << "Display module initialized\n";
 }
 
 Display::~Display() { cv::destroyAllWindows(); }
 
-void Display::textBox(cv::Mat& frame, const cv::Point pt,
-                      const std::string& text) {
+void Display::textBox(cv::Mat &frame, const cv::Point pt,
+                      const std::string &text) {
   // Calculate text dimensions for proper box sizing
   int fontFace = cv::FONT_HERSHEY_SIMPLEX;
   double fontScale = 0.4;
@@ -44,7 +44,7 @@ void Display::textBox(cv::Mat& frame, const cv::Point pt,
 void Display::display() {
   int frame_count = 0;
   float frame_time = 0;
-  RobustEmotionStabilizer stabilizer;  // define prediction smoother
+  RobustEmotionStabilizer stabilizer; // define prediction smoother
 
   // Create display window
   cv::namedWindow("Display", cv::WINDOW_NORMAL);
@@ -65,17 +65,17 @@ void Display::display() {
       continue;
     }
 
-    auto& emotion_ptr = emotion_ptr_wrapped.value();
-    cv::Mat& frame = emotion_ptr->frame;
+    auto &emotion_ptr = emotion_ptr_wrapped.value();
+    cv::Mat &frame = emotion_ptr->frame;
 
     if (frame.empty()) {
       continue;
     }
 
     // Draw bounding boxes and emotion labels
-    const std::vector<Bbox>& boxes = emotion_ptr->bboxes;
-    const std::vector<std::string>& emotions = emotion_ptr->predictions;
-    const std::vector<float>& conf = emotion_ptr->confidences;
+    const std::vector<Bbox> &boxes = emotion_ptr->bboxes;
+    const std::vector<std::string> &emotions = emotion_ptr->predictions;
+    const std::vector<float> &conf = emotion_ptr->confidences;
 
     for (size_t i = 0; i < boxes.size() && i < emotions.size(); i++) {
       std::string emotion = stabilizer.stabilize(emotions[i], conf[i]);
@@ -115,7 +115,7 @@ void Display::display() {
     // Display frame
     auto now = std::chrono::steady_clock::now();
     static auto last_display = now;
-    int display_interval_ms = 1000 / 100;  // cap at 100 fps
+    int display_interval_ms = 1000 / 100; // cap at 100 fps
 
     if (std::chrono::duration_cast<std::chrono::milliseconds>(now -
                                                               last_display)
@@ -123,8 +123,8 @@ void Display::display() {
       cv::imshow("Display", frame);
       last_display = now;
     }
-    cv::waitKey(1);              // keep window responsive
-    if (cv::waitKey(1) == 27) {  // ESC key to exit
+    cv::waitKey(1);             // keep window responsive
+    if (cv::waitKey(1) == 27) { // ESC key to exit
       break;
     }
   }

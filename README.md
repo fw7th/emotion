@@ -70,22 +70,6 @@ cmake .. && make -j$(nproc)
 ./emotion 0 ## 0 is the webcam ID.
 ```
 
-## Architecture
-```mermaid
-graph LR
-    A[Camera Input] --> B[Reader Thread<br/>Frame Skip: Every 3rd]
-    B --> C[Face Detection Thread<br/>UltraFace NCNN<br/>150+ FPS]
-    C --> D[Emotion Thread<br/>ROI Crop + Classify<br/>90+ FPS]
-    D --> E[Display Thread<br/>Bounding Boxes + Labels<br/>600+ FPS]
-    
-    B -.-> F[Queue 1]
-    C -.-> G[Queue 2] 
-    D -.-> H[Queue 3]
-    F --> C
-    G --> D
-    H --> E
-```
-
 ## Technical Details
 ### Pipeline
 - Build system: CMake
