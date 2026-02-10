@@ -1,195 +1,165 @@
-# Real-Time Multi-Face Emotion Detection with ncnn
+# Emotion Model Training and Evaluation
 
-CPU-only, real-time emotion recognition built on ncnn, designed for low-power edge and retail analytics.
+This document describes the training pipeline, datasets, and evaluation used for the emotion classification model deployed with ncnn.
 
-This project demonstrates how to structure a multi-threaded vision pipeline around ncnn that sustains high frame rates under tight CPU and memory constraints.
-
-<p align="center">
-  <img src="assets/github.gif" alt="Demo" width="480">
-</p>
+The goal is to provide reproducible benchmarks and justify architectural and training decisions.
 
 ---
 
-## Key Properties
+## Environment
 
-- CPU-only inference using ncnn
-- Real-time, multi-face processing
-- ~90 FPS end-to-end on constrained hardware
-- Low memory footprint
-- Suitable for edge and IoT deployments
-
----
-
-## Why ncnn
-
-This project uses ncnn for both face detection and emotion classification.
-
-ncnn was chosen because it provides:
-- Efficient CPU execution with low runtime overhead
-- Small binary and memory footprint
-- Strong performance on edge and embedded systems
-- Simple deployment without GPU dependencies
-
-The pipeline is designed to stress real-time CPU inference and thread scheduling using ncnn.
-
----
-
-## Use Cases
-
-- Retail customer engagement analysis
-- Classroom attention monitoring
-- Mood tracking in clinical settings
-- Audience reaction analysis
-
----
-
-## Architecture Overview
-```mermaid
-graph LR
-    A[Camera] --> B[Reader Thread]
-    B --> C[Face Detection - UltraFace ncnn]
-    C --> D[Emotion Classification - MobileNetV2 ncnn]
-    D --> E[Display]
-    
-    B -.-> Q1[Queue]
-    C -.-> Q2[Queue]
-    D -.-> Q3[Queue]
-    
-    Q1 --> C
-    Q2 --> D
-    Q3 --> E
-```
-
-The pipeline uses lock-free queues and avoids unnecessary copies to maintain low latency.
-
----
-
-## Performance Summary
-
-**Test device**: Intel i5-3320M, 8 GB RAM
-
-| Metric | Value |
-|--------|-------|
-| End-to-end throughput | ~90 FPS |
-| End-to-end latency | ~15 ms |
-| Memory usage | ~50 MB |
-| CPU utilization | <10% |
-
-### Edge and IoT Evaluation
-
-The pipeline was evaluated under a Docker-simulated IoT environment:
-
-- 1 vCPU
-- 512 MB RAM
-- Throttled I/O
-
-The system sustains ~90 FPS end-to-end with under 10 percent CPU utilization.
-
-Benchmark scripts and Docker configuration are included for reproducibility.
-
----
-
-## Models
-
-**Face detection**: Ultra-Light-Fast Face Detector (ncnn)
-
-**Emotion classification**: MobileNetV2 (ncnn)
-- Grayscale input
-- 7 emotion classes: angry, disgust, fear, happy, neutral, sad, surprise
-
-| Model | Accuracy | Inference Time |
-|-------|----------|----------------|
-| MobileNetV2 | 79.3% | 9.1 ms |
-
-Training details, datasets, and ablations are documented in `src/python/README.md`.
-
----
-
-## Image Embeddings
-
-The emotion model exposes intermediate image embeddings that can be reused for:
-
-- Temporal smoothing
-- Identity-aware emotion tracking
-- Downstream analytics
-
-This allows extensions beyond per-frame classification.
-
----
-
-## Quick Start
+- Python 3.12.11
+- PyTorch 2.8.0
 
 ### Dependencies
-```bash
-sudo apt install opencv-dev cmake
 ```
-
-### Build
-```bash
-git clone https://github.com/fw7th/emotion.git
-cd src
-mkdir build && cd build
-cmake .. && make -j$(nproc)
-```
-
-### Run
-```bash
-./emotion 0
+matplotlib==3.10.6
+numpy==2.3.3
+Pillow==11.3.0
+scikit_learn==1.7.2
+seaborn==0.13.2
+thop==0.1.1.post2209072238
+torchvision==0.23.0+cu126
+tqdm==4.67.1
 ```
 
 ---
 
-## Benchmarks
+## Model Architecture
 
-<details>
-<summary><strong>Detailed Benchmarks</strong></summary>
+- Base model: MobileNetV2 (ImageNet-V2 pretrained)
+- Input: grayscale, 64x64
+- Conv1 adapted for single-channel input
+- FLOPs: ~26M
+- Parameters: ~2.23M
+- Trainable parameters: ~2.23M
 
-### Face Detection
-- ~150 FPS
-- ~6.1 ms per frame
-
-### Emotion Classification
-- ~90 FPS
-- ~9.1 ms per frame
-
-### End-to-End Pipeline
-- ~15 ms latency
-- ~90 FPS sustained
-
-### IoT Node Breakdown
-
-| Stage | Latency (ms) |
-|-------|--------------|
-| Face Detector | ~6.1 |
-| Emotion Detector | ~9.1 |
-| Display | ~0.03 |
-| End-to-End | ~15 |
-
-Benchmarks averaged over 5 runs under real-time scheduling.
-Docker constraints applied using `--cpus=1 --memory=512m`.
-
-</details>
+The model was selected to balance accuracy and CPU inference speed.
 
 ---
 
-## Limitations
+## Training Strategy
 
-- Limited multi-face temporal tracking
-- SORT-based tracking planned
+Two-stage full-network training was used.
+
+### Stage 1
+- Learning rate: 1e-3
+- All layers trainable
+- Train until validation loss plateaus
+- Best checkpoint saved
+
+### Stage 2
+- Load best Stage 1 checkpoint
+- Learning rate: 1e-5
+- Train until early stopping
+
+Traditional freeze-then-unfreeze fine-tuning underperformed on the combined dataset.
 
 ---
 
-## Relation to ncnn
+## Datasets
 
-This project is a downstream application of ncnn and serves as a reference for:
+Training uses a combination of FER2013 and RAF-DB to improve robustness to domain shift.
 
-- Real-time multi-threaded pipelines
-- CPU-only inference at high frame rates
-- Edge and low-power deployment scenarios
+### RAF-DB (approx. 35k images)
+- angry: 4550
+- disgust: 4857
+- fear: 5103
+- happy: 5023
+- neutral: 4902
+- sad: 4994
+- surprise: 5231
+
+### FER2013 (approx. 34k images)
+- angry: 4529
+- disgust: 483
+- fear: 4724
+- happy: 8733
+- neutral: 6053
+- sad: 5581
+- surprise: 3833
 
 ---
 
-## Acknowledgements
+## Data Splits
 
-- [ncnn](https://github.com/Tencent/ncnn), BSD 3-Clause License
-- [Ultra-Light-Fast-Generic-Face-Detector-1MB](https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB) by Linzaer, MIT License
+Combined dataset split:
+- 70 percent train
+- 15 percent validation
+- 15 percent test
+
+### Class Balancing
+
+- Weighted random sampler
+- Class weights in CrossEntropyLoss
+
+---
+
+## Preprocessing and Augmentation
+
+- Grayscale conversion
+- Resize to 64x64
+- Random horizontal flip (p=0.3)
+- Color jitter (brightness=0.2, contrast=0.3)
+- Random erasing (p=0.3)
+- Normalize pixel range to [-1, 1]
+
+---
+
+## Optimization
+
+- Loss: CrossEntropyLoss
+- Optimizer: AdamW
+- Weight decay: 1e-2
+- Gradient clipping: norm 1.0
+- Scheduler: ReduceLROnPlateau
+- Early stopping patience: 8 epochs
+
+---
+
+## Ablation Results
+
+| Approach | Validation Accuracy |
+|----------|---------------------|
+| Freeze then unfreeze | ~73.8% |
+| EfficientNet-lite0 | ~77.4% |
+| Two-stage full training | ~79.3% |
+
+---
+
+## Evaluation Results
+
+### Overall Performance
+
+| Model | Accuracy | Weighted F1 |
+|-------|----------|-------------|
+| MobileNetV2 | 79.3% | 0.793 |
+
+### Per-Class Performance
+
+| Emotion | Precision | Recall | F1 |
+|---------|-----------|--------|-----|
+| Angry | 0.744 | 0.778 | 0.761 |
+| Disgust | 0.908 | 0.943 | 0.923 |
+| Fear | 0.777 | 0.737 | 0.756 |
+| Happy | 0.888 | 0.852 | 0.870 |
+| Neutral | 0.706 | 0.742 | 0.723 |
+| Sad | 0.704 | 0.683 | 0.694 |
+| Surprise | 0.860 | 0.878 | 0.869 |
+
+---
+
+## Training Curves
+
+![Training and Validation Accuracy](../../assets/acc_curves.png)  
+![Training and Validation Loss](../../assets/loss_curves.png)
+
+The learning rate reduction at epoch ~15 corresponds to the ReduceLROnPlateau scheduler.  
+Final model selected based on best validation performance, not final epoch.
+
+---
+
+## Notes
+
+- Combined-dataset training improves robustness to lighting, pose, and expression ambiguity
+- The resulting model is optimized for fast CPU inference when exported to ncnn
