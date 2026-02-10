@@ -1,63 +1,130 @@
-# Real-Time Multi-Face Emotion Detection
-*High-performance emotion recognition pipeline achieving 90+ FPS on CPU*.\
-Motivation was a low power option for retail analysis.
+# Real-Time Multi-Face Emotion Detection with ncnn
+
+CPU-only, real-time emotion recognition built on ncnn, designed for low-power edge and retail analytics.
+
+This project demonstrates how to structure a multi-threaded vision pipeline around ncnn that sustains high frame rates under tight CPU and memory constraints.
 
 <p align="center">
   <img src="assets/github.gif" alt="Demo" width="480">
 </p>
 
+---
+
+## Key Properties
+
+- CPU-only inference using ncnn
+- Real-time, multi-face processing
+- ~90 FPS end-to-end on constrained hardware
+- Low memory footprint
+- Suitable for edge and IoT deployments
+
+---
+
+## Why ncnn
+
+This project uses ncnn for both face detection and emotion classification.
+
+ncnn was chosen because it provides:
+- Efficient CPU execution with low runtime overhead
+- Small binary and memory footprint
+- Strong performance on edge and embedded systems
+- Simple deployment without GPU dependencies
+
+The pipeline is designed to stress real-time CPU inference and thread scheduling using ncnn.
+
+---
+
 ## Use Cases
-- Retail: Customer engagement analysis
-- Education: Student attention monitoring  
-- Healthcare: Patient mood tracking
-- Gaming: Adaptive difficulty based on player emotion
-- Content: Audience reaction analysis
 
-## Performance
-- Face Detection: 150+ FPS
-- Emotion Classification: 90+ FPS  
-- End-to-end Latency: ~15ms
-- Memory Usage: ~50MB
-- Tested on: Intel i5-3320M, 8GB RAM
+- Retail customer engagement analysis
+- Classroom attention monitoring
+- Mood tracking in clinical settings
+- Audience reaction analysis
 
-E2E pipeline is also tested on a docker simulated edge device by constraining pc resources in the following manner:
-+ 1 vCPU
-+ 512 MB RAM
-+ Throttled I/O
+---
 
-### IoT Node Benchmark (Docker simulated)
+## Architecture Overview
+```mermaid
+graph LR
+    A[Camera] --> B[Reader Thread]
+    B --> C[Face Detection (UltraFace ncnn)]
+    C --> D[Emotion Classification (MobileNetV2 ncnn)]
+    D --> E[Display]
 
-| Stage            | Latency (ms) | Throughput (FPS) | CPU Usage (%) | Memory (MB) | Threads (PIDs) |
-|------------------|--------------|------------------|---------------|-------------|----------------|
-| Frame Reader     |              |                  | ~1            | ~5          | 2              |
-| Face Detector    | ~6.1         | ~150             | ~3            | ~7          | 3              |
-| Emotion Detector | ~9.1         | ~90              | ~2            | ~6          | 3              |
-| Display          | ~0.03        | negligible       | ~0.5          | ~2          | 2              |
-| **End-to-End**   | ~15          | ~90 (avg)        | ~6–8          | ~20–50      | ~10–12         |
+    B -.-> Q1[Queue]
+    C -.-> Q2[Queue]
+    D -.-> Q3[Queue]
 
-The pipeline sustains ~90 FPS end-to-end with <10% CPU usage and ~50 MB RAM on a 1 vCPU/512 MB simulated IoT node.
+    Q1 --> C
+    Q2 --> D
+    Q3 --> E
+```
 
-**Methodology Notes**  
-- FPS and latency values were recorded under real-time, multi-threaded scheduling.  
-- Docker constraints were applied explicitly (`--cpus=1 --memory=512m --blkio-weight=100`) to simulate an IoT node.  
-- All numbers are averages across 5 runs. Reproducibility can be verified by running the included benchmarking scripts under the same flags.
+The pipeline uses lock-free queues and avoids unnecessary copies to maintain low latency.
 
-![IoT docker status dump](assets/iot.png)
+---
 
-## Why 90 FPS on CPU?
-- No GPU required = lower hardware costs
-- Works on edge devices (Raspberry Pi, etc.)
-- Scalable to 100s of cameras without expensive servers
-- Deploy anywhere (even offline/remote locations)
+## Performance Summary
+
+**Test device**: Intel i5-3320M, 8 GB RAM
+
+| Metric | Value |
+|--------|-------|
+| End-to-end throughput | ~90 FPS |
+| End-to-end latency | ~15 ms |
+| Memory usage | ~50 MB |
+| CPU utilization | <10% |
+
+### Edge and IoT Evaluation
+
+The pipeline was evaluated under a Docker-simulated IoT environment:
+
+- 1 vCPU
+- 512 MB RAM
+- Throttled I/O
+
+The system sustains ~90 FPS end-to-end with under 10 percent CPU utilization.
+
+Benchmark scripts and Docker configuration are included for reproducibility.
+
+---
+
+## Models
+
+**Face detection**: Ultra-Light-Fast Face Detector (ncnn)
+
+**Emotion classification**: MobileNetV2 (ncnn)
+- Grayscale input
+- 7 emotion classes: angry, disgust, fear, happy, neutral, sad, surprise
+
+| Model | Accuracy | Inference Time |
+|-------|----------|----------------|
+| MobileNetV2 | 79.3% | 9.1 ms |
+
+Training details, datasets, and ablations are documented in `src/python/README.md`.
+
+---
+
+## Image Embeddings
+
+The emotion model exposes intermediate image embeddings that can be reused for:
+
+- Temporal smoothing
+- Identity-aware emotion tracking
+- Downstream analytics
+
+This allows extensions beyond per-frame classification.
+
+---
 
 ## Quick Start
-### Install dependencies
+
+### Dependencies
 ```bash
 sudo apt install opencv-dev cmake
 ```
-- Optionally, you could create an image from the provided `Dockerfile`.
 
-### Clone and build
+### Build
 ```bash
 git clone https://github.com/fw7th/emotion.git
 cd src
@@ -65,131 +132,64 @@ mkdir build && cd build
 cmake .. && make -j$(nproc)
 ```
 
-### Run with webcam
+### Run
 ```bash
-./emotion 0 ## 0 is the webcam ID.
+./emotion 0
 ```
-
-## Technical Details
-### Pipeline
-- Build system: CMake
-- Implementation details: 
-   * Custom anti-copy queue.
-   * `print_type` function used to print custom types.
-   * Single person smoothing classes: hysteresis stabilizer, switching on constant high confidence.
-   * Memory management, move semantics, and efficient vector usage.
-   * Multi-threaded architecture.
-
-### Model Details
-Available models:
-- **MobileNetv2 (IMAGENET-V2 pretrained)** finetuned for task - 79.3% accuracy, 9.1ms inference
-- **EfficientNet-lite0** (planned - experimental results showed accuracy/speed tradeoff not favorable)
-<br>
-Only change made to model architectures was in conv1 to allow grayscale inputs.
-
-Metrics are relayed in benchmarking details.<br>
-
-The model was fine-tuned on a mix of raf-db and fer2013 in two phases;
-  + Phase 1; All layers unfrozen, high lr
-  + Phase 2: Same but with a lower lr
-
-- While this may seem unorthodox, this produced the best results from rigorous tests.
-
-- Models were allowed to train for as many epochs as possible till val loss plateaued and early stopping triggered.
-- Pytorch's ReduceLROnPlateau as our LR annealing strategy.
-- Models trained to detect 7 emotions:
-    > [angry, disgust, fear, happy, neutral, sad, surprise]
-
-**Data**;
-- Dataset: FER2013 + RAF-DB [~48k training images]  [~10k test images]  [~10k val images].
-- Augmentations:
-    > GrayScaling\
-    > Image resizing (64x64)
-    > ColorJitter; brightness=0.2, contrast=0.3\
-    > RandomHorizontal flip; p=0.3\
-    > RandomErasing; p=0.3, value='0.0'\
-    > Tensors were normalized first to range [0,1] then to [-1,1]
-- Weighted class sampler to balance less represented classes like disgust and mitigate bias.
-- Batch size: 192
-- Data loader num_workers: 4
-
-**Training**;
-- Loss Function: CrossEntropyLoss
-- Optimizer: 
-    + First phase: AdamW(lr=1e-3,
-                        weight_decay=1e-2,
-                        betas=(0.9, 0.999),
-                        eps=1e-8,
-                        amsgrad=True
-    )
-    + Second phase: AdamW(lr=1e-5, same as above for the rest)
-- Norm-based gradient clipping; grad_clip_norm=1.0
-- Allowed epochs: 100
-- Scheduler patience: 3
-- Scheduler factor: 0.5
-- Early stopping patience: 8
-
-**For nerds;** more information about training and model performance available in `src/python/README.md`.
-
-Cleaned datasets available @: [https://drive.google.com/file/d/1kDnWsOLdptVEOWoFhfFTSmv7sU0vP_bM/view?usp=drive_link]
-
-## Benchmarking
-Benchmarks were averaged over 5 runs.\
-**Device note:** Reader module is capped at webcam framerate (30 fps on test device).  
-
-### Model Accuracy (Validation Set - 10k images)
-
-| Model                 | Dataset            | Accuracy | Weighted F1  | Inference Time | Memory |
-|-----------------------|--------------------|----------|--------------|----------------|--------|
-| MobileNetV2           | FER2013 + RAF-DB   | 79.3%    | 0.793        | 9.1ms          | 50MB   |
-| FER2013 SOTA (ResNet) | FER2013            | ~73%     | -            | ~50ms          | ~500MB |
-| RAF-DB SOTA           | RAF-DB             | ~88-90%  | -            | -              | -      |
-| Baseline (random)     | -                  | 14.3%    | -            | -              | -      |
-
-### Per-Class Performance (MobileNetV2)
-
-| Emotion          | Precision  | Recall    | F1-Score  | Support   |
-|------------------|------------|-----------|-----------|-----------|
-| Angry            | 0.744      | 0.778     | 0.761     | 1361      | 
-| Disgust          | 0.908      | 0.943     | 0.923     | 801       |
-| Fear             | 0.777      | 0.737     | 0.756     | 1474      |
-| Happy            | 0.888      | 0.852     | 0.870     | 2063      |
-| Neutral          | 0.706      | 0.742     | 0.723     | 1643      |
-| Sad              | 0.704      | 0.683     | 0.694     | 1586      |
-| Surprise         | 0.860      | 0.878     | 0.869     | 1359      |
-| **Macro Avg**    | **0.798**  | **0.802** | **0.800** | **10287** |
-| **Weighted Avg** | **0.793**  | **0.793** | **0.793** | **10287** |
-
-![Confusion Matrix](assets/confusion_matrix.png)
-
-### Speed Benchmarks
-#### Model 1 — MobileNetV2
-| Module            | Metric                 | Avg Value      | Notes |
-|-------------------|------------------------|----------------|-------|
-| **Reader**        | Frame Rate             | 30 fps (cap)   | Limited by webcam, not algorithm |
-| **Face Detector** | Detection Time         | 6.1 ms         | ~163 fps effective |
-|                   | Avg Frame Proc.        | 6.1 ms         | |
-| **Emotion Det.**  | Avg Frame Proc.        | 9.1 ms         | ~106 fps effective |
-|                   | Total Emotion Loop     | 9.6 ms         | |
-| **Display**       | Avg Frame Proc.        | 0.03 ms        | ~29k fps (negligible) |
 
 ---
 
-## Planned Upgrades
-- Gaze tracking and blink rate
-- Head pose estimation
-- Micro-expression detection
-- Attention/engagement scoring
-- Graceful degradation under load (unlikely with optimization)
-- Multi-camera support
+## Benchmarks
+
+<details>
+<summary><strong>Detailed Benchmarks</strong></summary>
+
+### Face Detection
+- ~150 FPS
+- ~6.1 ms per frame
+
+### Emotion Classification
+- ~90 FPS
+- ~9.1 ms per frame
+
+### End-to-End Pipeline
+- ~15 ms latency
+- ~90 FPS sustained
+
+### IoT Node Breakdown
+
+| Stage | Latency (ms) |
+|-------|--------------|
+| Face Detector | ~6.1 |
+| Emotion Detector | ~9.1 |
+| Display | ~0.03 |
+| End-to-End | ~15 |
+
+Benchmarks averaged over 5 runs under real-time scheduling.
+Docker constraints applied using `--cpus=1 --memory=512m`.
+
+</details>
+
+---
 
 ## Limitations
-N-face emotion smoothing and tracking with SORT (planned).
+
+- Limited multi-face temporal tracking
+- SORT-based tracking planned
+
+---
+
+## Relation to ncnn
+
+This project is a downstream application of ncnn and serves as a reference for:
+
+- Real-time multi-threaded pipelines
+- CPU-only inference at high frame rates
+- Edge and low-power deployment scenarios
+
+---
 
 ## Acknowledgements
-- This project uses [ncnn](https://github.com/Tencent/ncnn), a high-performance neural network inference framework (BSD 3-Clause License).
-- Face detection based on [Ultra-Light-Fast-Generic-Face-Detector-1MB](https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB) by Linzaer (MIT License).
 
-### Third-Party Licenses
-- [ncnn](https://github.com/Tencent/ncnn) — BSD 3-Clause License.
-- [Ultra-Light-Fast-Generic-Face-Detector-1MB](https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB) by Linzaer — MIT License.
+- [ncnn](https://github.com/Tencent/ncnn), BSD 3-Clause License
+- [Ultra-Light-Fast-Generic-Face-Detector-1MB](https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB) by Linzaer, MIT License
