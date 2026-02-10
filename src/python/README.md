@@ -47,14 +47,14 @@ The pipeline is designed to stress real-time CPU inference and thread scheduling
 ```mermaid
 graph LR
     A[Camera] --> B[Reader Thread]
-    B --> C["Face Detection<br/>(UltraFace ncnn)"]
-    C --> D["Emotion Classification<br/>(MobileNetV2 ncnn)"]
+    B --> C[Face Detection - UltraFace ncnn]
+    C --> D[Emotion Classification - MobileNetV2 ncnn]
     D --> E[Display]
-
+    
     B -.-> Q1[Queue]
     C -.-> Q2[Queue]
     D -.-> Q3[Queue]
-
+    
     Q1 --> C
     Q2 --> D
     Q3 --> E
